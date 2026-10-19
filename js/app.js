@@ -17,12 +17,15 @@ const CATEGORIAS = {
     { id: 'lazer', nome: 'Lazer' }, { id: 'roupas', nome: 'Roupas' }, { id: 'educacao', nome: 'Estudos' },
     { id: 'pets', nome: 'Bichinhos' }, { id: 'presentes', nome: 'Presentes' }, { id: 'assinaturas', nome: 'Assinaturas' },
     { id: 'beleza', nome: 'Beleza' }, { id: 'outros', nome: 'Outros' },
+    { id: 'dividas', nome: 'Dívidas e carnês', oculta: true },
   ],
   receita: [
-    { id: 'salario', nome: 'Salário' }, { id: 'extra', nome: 'Um extra' }, { id: 'recebido', nome: 'Recebi de alguém' }, { id: 'outros', nome: 'Outros' },
+    { id: 'salario', nome: 'Salário' }, { id: 'paralelo', nome: 'Trabalho paralelo' }, { id: 'extra', nome: 'Um extra' },
+    { id: 'recebido', nome: 'Recebi de alguém' }, { id: 'outros', nome: 'Outros' },
   ],
 };
-const categoria = (tipo, id) => CATEGORIAS[tipo].find(c => c.id === id) || CATEGORIAS[tipo][CATEGORIAS[tipo].length - 1];
+const categoria = (tipo, id) => CATEGORIAS[tipo].find(c => c.id === id) || CATEGORIAS[tipo].find(c => c.id === 'outros');
+const hojeChave = () => hojeIso().slice(0, 7);
 const FORMAS = { pix: 'Pix', debito: 'Débito', dinheiro: 'Dinheiro' };
 
 // "hoje" é a data do aparelho (dá para fixar com ?hoje=2026-10-19, para testes e prints)
@@ -105,7 +108,7 @@ function render() {
   $('#quem').innerHTML = p ? `<span>${esc(p.nome)}</span><span class="avatar" style="--cor:${p.cor}" aria-hidden="true">${esc(p.nome.trim()[0] || '?')}</span>` : '';
   $$('.abas [data-aba]').forEach(b => b.dataset.aba === Tela.aba ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
   const tela = $('#tela');
-  tela.innerHTML = ({ mes: telaMes, cartoes: telaCartoes, onde: telaOnde, ajustes: telaAjustes })[Tela.aba]();
+  tela.innerHTML = ({ mes: telaMes, carteira: telaCarteira, onde: telaOnde, ajustes: telaAjustes })[Tela.aba]();
 }
 function irPara(aba) {
   Tela.aba = aba; render(); scrollTo({ top: 0 });
@@ -126,13 +129,22 @@ function seletorMes() {
 function linhaLanc(it) {
   const l = it.lanc, rec = l.tipo === 'receita';
   const cat = categoria(l.tipo, l.categoria);
+  if (it.divida) {
+    const sit = { pago: 'pago', previsto: 'a pagar', atrasado: 'não pago' }[it.situacao];
+    return `<button type="button" class="lanc" data-acao="divida" data-id="${it.divida.id}" data-chave="${it.data.slice(0, 7)}">
+      <span class="cat">${ic('c-dividas')}</span>
+      <span class="meio"><b>${esc(it.divida.nome)}</b><small><span class="etiqueta">${it.parcela}/${it.deParcelas}</span> · <span class="carimbo mini ${it.situacao}">${sit}</span></small></span>
+      <span class="valor neg">${it.situacao === 'atrasado' ? 'não pago' : '− ' + R(it.valor)}</span>
+    </button>`;
+  }
   const extras = [];
+  if (l.renda) extras.push(it.data > hojeIso() ? `<span class="etiqueta">${ic('i-repete')}cai dia ${+it.data.slice(8)}</span>` : `<span class="etiqueta">${ic('i-check')}caiu dia ${+it.data.slice(8)}</span>`);
   if (it.cartao) extras.push(`${seloBanco(it.cartao.banco, 'p')}${esc(it.cartao.apelido)}`);
   else if (!rec && l.forma) extras.push(esc(FORMAS[l.forma] || l.forma));
   if (it.deParcelas > 1) extras.push(`<span class="etiqueta">${it.parcela}/${it.deParcelas}</span>`);
-  if (l.fixo) extras.push(`<span class="etiqueta">${ic('i-repete')}todo mês</span>`);
+  if (l.fixo && !l.renda) extras.push(`<span class="etiqueta">${ic('i-repete')}todo mês</span>`);
   if (!extras.length) extras.push(esc(cat.nome));
-  return `<button type="button" class="lanc" data-acao="editar" data-id="${l.id}">
+  return `<button type="button" class="lanc ${l.renda && it.data > hojeIso() ? 'futuro' : ''}" data-acao="${l.renda ? 'renda' : 'editar'}" data-id="${l.id}">
     <span class="cat">${ic('c-' + cat.id)}</span>
     <span class="meio"><b>${esc(l.descricao || cat.nome)}</b><small>${extras.join(' · ')}</small></span>
     <span class="valor ${rec ? 'pos' : 'neg'}">${rec ? '+ ' : '− '}${R(it.valor)}</span>
@@ -150,7 +162,8 @@ function frasesDoMes(r, vazio) {
 }
 
 function telaMes() {
-  const cad = Dados.caderno, r = Fatura.resumoDoMes(cad, Tela.mes), hoje = hojeIso();
+  const cad = Dados.caderno, hoje = hojeIso(), r = Fatura.resumoDoMes(cad, Tela.mes, hoje.slice(0, 7));
+  const vaiEntrar = r.itens.filter(it => it.lanc.tipo === 'receita' && it.data > hoje).reduce((s, it) => s + it.valor, 0);
   const vazio = r.itens.length === 0;
   const { humor, nota } = frasesDoMes(r, vazio);
   const tom = r.saldo > 0 ? 'pos' : r.saldo < 0 ? 'neg' : '';
@@ -182,9 +195,11 @@ function telaMes() {
         </div>
       </div>
       <div class="contas-mes">
-        <div><span>Entrou</span><b class="pos">+ ${R(r.entrou)}</b></div>
+        ${r.entrou - vaiEntrar || !vaiEntrar ? `<div><span>Entrou</span><b class="pos">+ ${R(r.entrou - vaiEntrar)}</b></div>` : ''}
+        ${vaiEntrar ? `<div><span>Vai entrar</span><b class="pos">+ ${R(vaiEntrar)}</b></div>` : ''}
         <div><span>Saiu no Pix, débito e dinheiro</span><b class="neg">− ${R(r.direto)}</b></div>
         <div><span>Faturas dos cartões</span><b class="neg">− ${R(r.faturas)}</b></div>
+        ${r.dividas || cad.dividas.length ? `<div><span>Dívidas e carnês</span><b class="neg">− ${R(r.dividas)}</b></div>` : ''}
       </div>
     </section>
 
@@ -231,17 +246,17 @@ function plastico(c, extra = '') {
   </div>`;
 }
 
-function telaCartoes() {
+function secaoCartoes() {
   const cad = Dados.caderno, hoje = hojeIso();
-  if (!cad.cartoes.length) return `<div>
-    <h2 class="titulo" style="font-size:34px">Cartões</h2>
-    <div class="vazio">${broto('dormindo', { tamanho: 110 })}
-      <p>Nenhum cartão por aqui ainda.<br>Cadastra com o dia que fecha e o dia que vence,<br>que eu calculo em qual fatura cada compra cai.</p>
+  if (!cad.cartoes.length) return `<section id="sec-cartoes">
+    <h3 class="titulo">Cartões</h3>
+    <div class="vazio rabisco fino tracejado" style="padding:16px">
+      <p>Nenhum cartão ainda. Cadastra com o dia que fecha e o dia que vence, que eu calculo em qual fatura cada compra cai.</p>
       <button type="button" class="botao principal rabisco" data-acao="novo-cartao">${ic('i-mais')} Cadastrar cartão</button>
-    </div></div>`;
+    </div></section>`;
 
-  return `<div>
-    <h2 class="titulo" style="font-size:34px">Cartões <small>toca no cartão pra ver a fatura</small></h2>
+  return `<section id="sec-cartoes">
+    <h3 class="titulo">Cartões <small>toca no cartão pra ver a fatura</small></h3>
     <div class="cartoes">${cad.cartoes.map(c => {
       const f = Fatura.faturaAberta(c, hoje);
       const total = Fatura.itensDaFatura(cad, c.id, f.chave).reduce((s, it) => s + it.valor, 0);
@@ -258,8 +273,8 @@ function telaCartoes() {
         <div class="dica-compra">Melhor dia de compra: dia ${c.fechamento} ✦</div>
       </div>`;
     }).join('')}</div>
-    <div class="linha-botoes" style="margin-top:24px"><button type="button" class="botao rabisco" data-acao="novo-cartao">${ic('i-mais')} Novo cartão</button></div>
-  </div>`;
+    <div class="linha-botoes" style="margin-top:20px"><button type="button" class="botao rabisco" data-acao="novo-cartao">${ic('i-mais')} Novo cartão</button></div>
+  </section>`;
 }
 
 // a fatura de um cartão, na folha
@@ -343,9 +358,301 @@ function formCartao(id) {
     };
     if (!novo.id) delete novo.id;
     Dados.salvarCartao(novo);
-    fecharFolha(); Tela.aba = 'cartoes'; render();
+    fecharFolha(); Tela.aba = 'carteira'; render();
     avisar(id ? 'Cartão atualizado.' : 'Cartão guardado no caderno.');
   });
+}
+
+// ------------------------------------------------------------------ carteira: renda, cartões e dívidas
+function telaCarteira() {
+  return `<div>
+    <h2 class="titulo" style="font-size:34px">Carteira</h2>
+    <nav class="escolhas" aria-label="Ir para">
+      <a class="escolha" href="#sec-renda">${ic('c-salario')}Renda</a>
+      <a class="escolha" href="#sec-cartoes">${ic('i-cartao')}Cartões</a>
+      <a class="escolha" href="#sec-dividas">${ic('c-dividas')}Dívidas</a>
+    </nav>
+    ${secaoRenda()}
+    ${secaoCartoes()}
+    ${secaoDividas()}
+  </div>`;
+}
+
+// os meses para escolher (um ano pra trás e um pra frente, e o escolhido, se estiver fora)
+function opcoesMes(sel) {
+  const lista = Array.from({ length: 25 }, (_, i) => Fatura.proximaChave(hojeChave(), i - 12));
+  if (sel && !lista.includes(sel)) lista.unshift(sel);
+  return lista.map(ch => `<option value="${ch}" ${ch === sel ? 'selected' : ''}>${nomeMes(ch)}</option>`).join('');
+}
+const opcoesDia = sel => Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}" ${i + 1 === sel ? 'selected' : ''}>dia ${i + 1}</option>`).join('');
+const emDias = n => (n === 1 ? 'amanhã' : `em ${n} dias`);
+
+// ---- renda: salário e trabalhos paralelos
+const NOME_RENDA = { salario: 'Salário', paralelo: 'Trabalho paralelo' };
+function secaoRenda() {
+  const ch = hojeChave(), hojeDia = +hojeIso().slice(8);
+  const rendas = Dados.rendas().filter(l => !l.ate || l.ate >= ch);
+  const doMes = rendas.filter(l => Fatura.fixoValeNoMes(l, ch));
+  const total = doMes.reduce((s, l) => s + Fatura.valorNoMes(l, ch), 0);
+  if (!rendas.length) return `<section id="sec-renda">
+    <h3 class="titulo">Renda</h3>
+    <div class="vazio rabisco fino tracejado" style="padding:16px">
+      <p>Cadastra o salário (e os trabalhos paralelos) com o dia que cai. Todo mês ele entra sozinho no caderno.</p>
+      <button type="button" class="botao principal rabisco" data-acao="nova-renda">${ic('i-mais')} Cadastrar salário</button>
+    </div></section>`;
+  return `<section id="sec-renda">
+    <h3 class="titulo">Renda <small>${R(total)} em ${MESES[Fatura.lerChave(ch)[1]]}</small></h3>
+    <div class="fichas">${rendas.map(l => {
+      const dia = +l.data.slice(8), vale = Fatura.fixoValeNoMes(l, ch);
+      const estado = !vale ? `começa em ${mesCurto(l.data.slice(0, 7))}` : dia <= hojeDia ? 'caiu este mês' : `cai ${emDias(dia - hojeDia)}`;
+      return `<button type="button" class="ficha rabisco fino" data-acao="renda" data-id="${l.id}">
+        <span class="selo selo-m renda-ic">${ic('c-' + (l.renda === 'salario' ? 'salario' : 'paralelo'))}</span>
+        <span class="meio"><b>${esc(l.descricao)}</b><small>${NOME_RENDA[l.renda]} · todo dia ${dia}</small></span>
+        <span class="valor pos">+ ${R(Fatura.valorNoMes(l, ch))}<small class="tinta2">${estado}</small></span>
+      </button>`;
+    }).join('')}</div>
+    <div class="linha-botoes"><button type="button" class="botao rabisco" data-acao="nova-renda">${ic('i-mais')} Salário ou trabalho paralelo</button></div>
+  </section>`;
+}
+
+function formRenda(id, mesCtx) {
+  const l0 = id && Dados.caderno.lancamentos.find(x => x.id === id);
+  const ch = mesCtx || hojeChave();
+  let tipo = l0 ? l0.renda : 'salario';
+  const f = abrirFolha(`${topoFolha(l0 ? 'Editar renda' : 'Nova renda')}
+    <form id="form-renda" novalidate>
+      <div class="alternar" role="group" aria-label="Tipo de renda">
+        <button type="button" class="t-entrada" data-renda="salario">Salário</button>
+        <button type="button" class="t-entrada" data-renda="paralelo">Trabalho paralelo</button>
+      </div>
+      <label class="campo"><span id="rot-onde">Onde você trabalha?</span><input class="entrada-texto" name="nome" maxlength="40" value="${esc(l0 ? l0.descricao : '')}" autocomplete="off"></label>
+      <div class="valor-caixa rabisco fino" style="margin-top:14px">
+        <label for="valor-renda" class="campo-rot" style="margin:0">Quanto cai por mês</label>
+        <input id="valor-renda" class="valor-grande" name="valor" inputmode="decimal" autocomplete="off" placeholder="R$ 0,00" value="${l0 ? Fatura.emReais(l0.valor) : ''}">
+      </div>
+      <div class="duas">
+        <label class="campo"><span>Cai todo</span><select class="entrada-texto" name="dia">${opcoesDia(l0 ? +l0.data.slice(8) : 10)}</select></label>
+        <label class="campo"><span>Desde</span><select class="entrada-texto" name="inicio">${opcoesMes(l0 ? l0.data.slice(0, 7) : hojeChave())}</select></label>
+      </div>
+      <div class="recado" id="recado-renda"></div>
+      ${l0 ? `<div class="secao rabisco fino" style="margin-top:18px">
+        <h3>${esc(MESES[Fatura.lerChave(ch)[1]])} veio diferente?</h3>
+        <p>Hora extra, desconto, um mês mais fraco… Muda só o valor deste mês.</p>
+        <div class="parcelas" style="gap:10px">
+          <input class="entrada-texto" id="valor-mes" inputmode="decimal" aria-label="Valor de ${esc(nomeMes(ch))}" value="${Fatura.emReais(Fatura.valorNoMes(l0, ch))}">
+          <button type="button" class="botao pequeno rabisco fino" id="so-este-mes">Só ${MES_CURTO[Fatura.lerChave(ch)[1]]}</button>
+        </div>
+        ${l0.ajustes && l0.ajustes[ch] != null ? `<button type="button" class="so-texto" id="desfazer-mes">voltar para ${R(l0.valor)}</button>` : ''}
+      </div>` : ''}
+      <div class="linha-botoes" style="margin-top:18px">
+        ${l0 ? `<button type="button" class="botao rabisco fino perigo" id="parar-renda">${ic('i-lixo')} Parar ou apagar</button>` : ''}
+        <button type="submit" class="botao principal rabisco">${ic('i-check')} Guardar</button>
+      </div>
+    </form>`);
+  const form = $('#form-renda', f);
+  const atualizar = () => {
+    $$('[data-renda]', f).forEach(b => b.setAttribute('aria-pressed', b.dataset.renda === tipo));
+    $('#rot-onde', f).textContent = tipo === 'salario' ? 'Onde você trabalha?' : 'Que trabalho é?';
+    form.nome.placeholder = tipo === 'salario' ? 'ex.: Loja do centro' : 'ex.: conserto de celular';
+    const v = Fatura.lerReais(form.valor.value);
+    $('#recado-renda', f).innerHTML = `${ic('i-repete')}<span>${v ? `Todo dia ${form.dia.value} entra ${R(v)} no caderno, sozinho.` : `Todo dia ${form.dia.value}, entra no caderno sozinho.`}
+      <small>Antes do dia, aparece como "vai entrar". Se num mês vier diferente, é só ajustar aquele mês.</small></span>`;
+  };
+  atualizar();
+  form.addEventListener('input', atualizar);
+  $$('[data-renda]', f).forEach(b => b.addEventListener('click', () => { tipo = b.dataset.renda; atualizar(); }));
+  form.valor.addEventListener('blur', () => { const v = Fatura.lerReais(form.valor.value); if (v) form.valor.value = Fatura.emReais(v); });
+  if (l0) {
+    $('#so-este-mes', f).addEventListener('click', () => {
+      const v = Fatura.lerReais($('#valor-mes', f).value);
+      if (v == null) { avisar('Faltou o valor.'); return; }
+      Dados.ajustarMes(l0.id, ch, v); fecharFolha(); render(); avisar(`Guardado só para ${MESES[Fatura.lerChave(ch)[1]]}.`);
+    });
+    const desf = $('#desfazer-mes', f);
+    if (desf) desf.addEventListener('click', () => { Dados.ajustarMes(l0.id, ch, null); fecharFolha(); render(); avisar('Voltou ao valor de sempre.'); });
+    $('#parar-renda', f).addEventListener('click', async () => {
+      const inicio = l0.data.slice(0, 7);
+      if (ch > inicio && await perguntar(`Parou de receber ${l0.descricao}?`, { sim: `Último mês: ${MES_CURTO[Fatura.lerChave(ch)[1]]}`, detalhe: `Até ${nomeMes(ch)} continua no caderno. Depois, não entra mais.` })) {
+        Dados.salvarLancamento(Object.assign({}, l0, { ate: ch })); fecharFolha(); render(); avisar('Guardado. Não entra mais.');
+      } else if (ch <= inicio && await perguntar('Apagar esta renda?', { sim: 'Apagar', detalhe: 'Ela some de todos os meses.' })) {
+        Dados.apagarLancamento(l0.id); fecharFolha(); render(); avisar('Apagado.');
+      }
+    });
+  }
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const valor = Fatura.lerReais(form.valor.value);
+    if (!valor) { form.valor.focus(); avisar('Faltou o valor.'); return; }
+    const dia = String(+form.dia.value).padStart(2, '0');
+    const novo = {
+      tipo: 'receita', renda: tipo, categoria: tipo, fixo: true, forma: null,
+      descricao: form.nome.value.trim() || NOME_RENDA[tipo], valor, data: `${form.inicio.value}-${dia}`,
+    };
+    if (l0) Object.assign(novo, { id: l0.id, criado: l0.criado }, l0.ajustes ? { ajustes: l0.ajustes } : {}, l0.ate ? { ate: l0.ate } : {});
+    Dados.salvarLancamento(novo);
+    fecharFolha(); render();
+    avisar(l0 ? 'Guardado.' : `Pronto! Todo dia ${+dia} ele entra sozinho.`);
+  });
+}
+
+// ---- dívidas: carnê, boleto, "na palavra"
+function situacaoDivida(p) { return p.quitada ? 'quitada' : p.atrasados ? 'atrasada' : 'em dia'; }
+
+function secaoDividas() {
+  const cad = Dados.caderno, ch = hojeChave();
+  const todas = cad.dividas.map(d => ({ d, p: Fatura.planoDivida(d, ch) }));
+  const abertas = todas.filter(x => !x.p.quitada), quitadas = todas.filter(x => x.p.quitada);
+  const falta = abertas.reduce((s, x) => s + x.p.restante, 0);
+  const cartao = ({ d, p }) => {
+    const sit = situacaoDivida(p), pct = Math.round(p.pago / d.total * 100);
+    return `<button type="button" class="carne rabisco" data-acao="divida" data-id="${d.id}">
+      <span class="carne-topo"><span class="meio"><b>${esc(d.nome)}</b>${d.credor ? `<small>com ${esc(d.credor)}</small>` : ''}</span>
+        <span class="carimbo ${sit.replace(' ', '-')}">${sit}</span></span>
+      <span class="carne-falta">${p.quitada ? `Pagou tudo: ${R(d.total)}` : `Falta <b>${R(p.restante)}</b> de ${R(d.total)}`}</span>
+      <span class="limite" aria-hidden="true"><i class="verde" style="width:${pct}%"></i></span>
+      ${p.quitada ? '' : `<span class="carne-pe"><span>Próxima: <b>${p.proxima ? R(p.proxima.valor) : '—'}</b>${p.proxima ? ` em ${mesCurto(p.proxima.chave)}, dia ${d.dia}` : ''}</span><span>termina em ${mesCurto(p.fim)}</span></span>`}
+    </button>`;
+  };
+  if (!todas.length) return `<section id="sec-dividas">
+    <h3 class="titulo">Dívidas e carnês</h3>
+    <div class="vazio rabisco fino tracejado" style="padding:16px">
+      <p>Comprou no carnê, no boleto ou na palavra? Anota quanto deve e quanto paga por mês, que eu calculo quando termina.</p>
+      <button type="button" class="botao rabisco" data-acao="nova-divida">${ic('i-mais')} Anotar dívida</button>
+    </div></section>`;
+  return `<section id="sec-dividas">
+    <h3 class="titulo">Dívidas e carnês <small>${abertas.length ? `falta ${R(falta)}` : 'tudo quitado'}</small></h3>
+    <div class="fichas">${abertas.map(cartao).join('')}</div>
+    ${quitadas.length ? `<details class="ver-tabela"><summary>Quitadas (${quitadas.length})</summary><div class="fichas">${quitadas.map(cartao).join('')}</div></details>` : ''}
+    <div class="linha-botoes"><button type="button" class="botao rabisco" data-acao="nova-divida">${ic('i-mais')} Anotar dívida</button></div>
+  </section>`;
+}
+
+function formDivida(id) {
+  const d0 = id && Dados.caderno.dividas.find(x => x.id === id);
+  let modo = d0 ? d0.modo || 'aumentar' : 'aumentar';
+  const f = abrirFolha(`${topoFolha(d0 ? 'Editar dívida' : 'Anotar dívida')}
+    <form id="form-divida" novalidate>
+      <label class="campo"><span>O que é?</span><input class="entrada-texto" name="nome" maxlength="40" value="${esc(d0 ? d0.nome : '')}" placeholder="ex.: geladeira da loja do Zé" autocomplete="off"></label>
+      <label class="campo"><span>Com quem? (opcional)</span><input class="entrada-texto" name="credor" maxlength="30" value="${esc(d0 ? d0.credor || '' : '')}" placeholder="ex.: Zé da loja" autocomplete="off"></label>
+      <div class="duas">
+        <label class="campo"><span>${d0 ? 'Valor total da dívida' : 'Quanto falta pagar'}</span><input class="entrada-texto" name="total" inputmode="decimal" value="${d0 ? Fatura.emReais(d0.total).replace('R$ ', '') : ''}" placeholder="1.475,76"></label>
+        <label class="campo"><span>Quanto vai pagar por mês</span><input class="entrada-texto" name="parcela" inputmode="decimal" value="${d0 ? Fatura.emReais(d0.parcela).replace('R$ ', '') : ''}" placeholder="200,00"></label>
+      </div>
+      <div class="duas">
+        <label class="campo"><span>Paga todo</span><select class="entrada-texto" name="dia">${opcoesDia(d0 ? d0.dia : 10)}</select></label>
+        <label class="campo"><span>Primeiro pagamento</span><select class="entrada-texto" name="inicio">${opcoesMes(d0 ? d0.inicio : hojeChave())}</select></label>
+      </div>
+      <div class="recado" id="recado-divida" hidden></div>
+      <div class="campo"><span class="campo-rot" id="rot-modo">Se num mês eu pagar menos:</span>
+        <div class="escolhas quebra" role="group" aria-labelledby="rot-modo">
+          <button type="button" class="escolha" data-modo="aumentar">As próximas parcelas aumentam (termina na data)</button>
+          <button type="button" class="escolha" data-modo="esticar">A parcela fica igual (termina depois)</button>
+        </div></div>
+      <div class="linha-botoes" style="margin-top:18px">
+        ${d0 ? `<button type="button" class="botao rabisco fino perigo" id="apagar-divida">${ic('i-lixo')} Apagar</button>` : ''}
+        <button type="submit" class="botao principal rabisco">${ic('i-check')} Guardar</button>
+      </div>
+    </form>`);
+  const form = $('#form-divida', f);
+  const atualizar = () => {
+    $$('[data-modo]', f).forEach(b => b.setAttribute('aria-pressed', b.dataset.modo === modo));
+    const total = Fatura.lerReais(form.total.value), parcela = Fatura.lerReais(form.parcela.value), rec = $('#recado-divida', f);
+    if (!total || !parcela) { rec.hidden = true; return; }
+    const n = Math.ceil(total / parcela), ultima = total - parcela * (n - 1), fim = Fatura.proximaChave(form.inicio.value, n - 1);
+    rec.hidden = false;
+    rec.innerHTML = `${ic('c-dividas')}<span>${n === 1 ? `Paga tudo de uma vez em ${MESES[Fatura.lerChave(fim)[1]]}.`
+      : `${n} meses: termina em ${nomeMes(fim)}.`}
+      <small>${n === 1 ? '' : ultima === parcela ? `${n} parcelas de ${R(parcela)}.` : `${n - 1} de ${R(parcela)} e a última de ${R(ultima)}.`}</small></span>`;
+  };
+  atualizar();
+  form.addEventListener('input', atualizar);
+  $$('[data-modo]', f).forEach(b => b.addEventListener('click', () => { modo = b.dataset.modo; atualizar(); }));
+  for (const n of ['total', 'parcela']) form[n].addEventListener('blur', () => { const v = Fatura.lerReais(form[n].value); if (v) form[n].value = Fatura.emReais(v).replace('R$ ', ''); });
+  if (d0) $('#apagar-divida', f).addEventListener('click', async () => {
+    if (await perguntar(`Apagar ${d0.nome}?`, { sim: 'Apagar', detalhe: 'Some do caderno, com os pagamentos anotados.' })) {
+      Dados.apagarDivida(d0.id); fecharFolha(); render(); avisar('Apagada.');
+    }
+  });
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const total = Fatura.lerReais(form.total.value), parcela = Fatura.lerReais(form.parcela.value);
+    if (!total) { form.total.focus(); avisar('Faltou quanto deve.'); return; }
+    if (!parcela) { form.parcela.focus(); avisar('Faltou quanto paga por mês.'); return; }
+    const novo = Object.assign({}, d0 || {}, {
+      nome: form.nome.value.trim() || 'Dívida', credor: form.credor.value.trim(),
+      total, parcela, dia: +form.dia.value, inicio: form.inicio.value, modo,
+    });
+    Dados.salvarDivida(novo);
+    const salvo = d0 || Dados.caderno.dividas[Dados.caderno.dividas.length - 1];
+    fecharFolha(); render(); abrirDivida(salvo.id);
+    avisar(d0 ? 'Guardado.' : 'Anotada. Agora é ir pagando.');
+  });
+}
+
+// a dívida aberta na folha: quanto falta, o recálculo e o carnê mês a mês
+function abrirDivida(id, mesCtx) {
+  const d = Dados.caderno.dividas.find(x => x.id === id);
+  if (!d) return;
+  const hoje = hojeChave(), p = Fatura.planoDivida(d, hoje);
+  const ch = (mesCtx && p.linhas.some(l => l.chave === mesCtx)) ? mesCtx : (p.proxima ? p.proxima.chave : p.linhas[p.linhas.length - 1].chave);
+  const linha = p.linhas.find(l => l.chave === ch);
+  const mesNome = MESES[Fatura.lerChave(ch)[1]];
+  const pct = Math.round(p.pago / d.total * 100);
+
+  // o recado do recálculo: o último mês em que pagou menos que o combinado
+  const menos = [...p.linhas].reverse().find(l => (l.tipo === 'pago' && l.valor < l.esperado) || l.tipo === 'atrasado');
+  let recalculo = '';
+  if (!p.quitada && menos) {
+    const antes = menos.tipo === 'atrasado' ? `Em ${MESES[Fatura.lerChave(menos.chave)[1]]} não teve pagamento marcado.`
+      : `Em ${MESES[Fatura.lerChave(menos.chave)[1]]} você pagou ${R(menos.valor)} de ${R(menos.esperado)}.`;
+    const ultima = p.linhas[p.linhas.length - 1];
+    const depois = (d.modo || 'aumentar') === 'aumentar'
+      ? (p.proxima && p.proxima.valor > d.parcela ? `Pra terminar em ${nomeMes(p.fim)}, as próximas parcelas ficam ${R(p.proxima.valor)}.`
+        : `Ainda dá pra terminar em ${nomeMes(p.fim)}: a última parcela fica ${R(ultima.valor)}.`)
+      : `Mantendo ${R(d.parcela)} por mês, termina em ${nomeMes(p.fim)}.`;
+    const outro = Fatura.planoDivida(Object.assign({}, d, { modo: (d.modo || 'aumentar') === 'aumentar' ? 'esticar' : 'aumentar' }), hoje);
+    const alternativa = (d.modo || 'aumentar') === 'aumentar'
+      ? (outro.fim !== p.fim ? `Se preferir manter ${R(d.parcela)} por mês, termina em ${nomeMes(outro.fim)}.` : '')
+      : (outro.proxima && outro.fim !== p.fim ? `Pra terminar em ${nomeMes(outro.fim)}, as próximas ficariam ${R(outro.proxima.valor)}.` : '');
+    recalculo = `<div class="recado">${ic('i-repete')}<span>${antes} ${depois}
+      ${alternativa ? `<small>${alternativa} <button type="button" class="so-texto" style="min-height:0;padding:0" data-acao="modo-divida" data-id="${d.id}" data-chave="${ch}">prefiro assim</button></small>` : ''}</span></div>`;
+  }
+
+  abrirFolha(`${topoFolha(esc(d.nome))}
+    ${d.credor ? `<p class="tinta2" style="margin:0">com ${esc(d.credor)}</p>` : ''}
+    ${p.quitada ? `<div class="vazio">${broto('feliz', { tamanho: 96 })}<span class="carimbo grande quitada">quitada</span>
+        <p class="nota">Pagou tudo: ${R(d.total)}. Uma a menos!</p></div>`
+      : `<div class="fatura-total">
+        <small>Falta pagar</small>
+        <div class="valor neg">${R(p.restante)}</div>
+        <small>de ${R(d.total)} · já pagou ${R(p.pago)}</small>
+      </div>
+      <div class="limite" role="img" aria-label="Pago: ${pct}%"><i class="verde" style="width:${pct}%"></i></div>
+      <p class="dica-compra" style="text-align:center;margin:10px 0 0">Termina em ${nomeMes(p.fim)}${p.fim !== p.fimCombinado ? ` (o combinado era ${mesCurto(p.fimCombinado)})` : ''}</p>`}
+    ${p.atrasados ? `<p class="neg" style="text-align:center;margin:6px 0 0">${p.atrasados === 1 ? 'Um mês' : p.atrasados + ' meses'} sem pagamento marcado.</p>` : ''}
+    ${recalculo}
+
+    ${linha ? `<div class="valor-caixa rabisco fino" style="margin-top:16px">
+      <label for="valor-pago" class="campo-rot" style="margin:6px 0 0">${linha.tipo === 'pago' ? `Pago em ${mesNome}` : `Pagamento de ${mesNome} (dia ${d.dia})`}</label>
+      <input id="valor-pago" class="valor-grande" inputmode="decimal" autocomplete="off" value="${Fatura.emReais(linha.tipo === 'pago' ? linha.valor : linha.esperado)}">
+      <small>${linha.tipo === 'pago' ? `o combinado era ${R(linha.esperado)}` : `o combinado é ${R(linha.esperado)}. Pagou outro valor? É só mudar.`}</small>
+      <div class="linha-botoes">
+        ${linha.tipo === 'pago' ? `<button type="button" class="botao rabisco fino" data-acao="desfazer-pagamento" data-id="${d.id}" data-chave="${ch}">Desfazer</button>` : ''}
+        <button type="button" class="botao principal rabisco" data-acao="pagar-divida" data-id="${d.id}" data-chave="${ch}">${ic('i-check')} ${linha.tipo === 'pago' ? 'Corrigir valor' : `Paguei ${MES_CURTO[Fatura.lerChave(ch)[1]]}`}</button>
+      </div>
+    </div>` : ''}
+
+    <h3 class="titulo">O carnê <small>toca num mês pra anotar</small></h3>
+    <div class="caderno rabisco fino">${p.linhas.map((l, i) => `
+      <button type="button" class="lanc ${l.chave === ch ? 'atual' : ''}" data-acao="divida" data-id="${d.id}" data-chave="${l.chave}" ${l.chave === ch ? 'aria-current="true"' : ''}>
+        <span class="cat mao" style="font-size:20px">${i + 1}</span>
+        <span class="meio"><b>${nomeMes(l.chave)}</b><small>dia ${d.dia}${l.tipo === 'pago' && l.valor !== l.esperado ? ` · combinado ${R(l.esperado)}` : ''}</small></span>
+        <span class="valor">${l.tipo === 'atrasado' ? '' : R(l.valor)} <span class="carimbo mini ${l.tipo}">${{ pago: 'pago', previsto: 'a pagar', atrasado: 'não pago' }[l.tipo]}</span></span>
+      </button>`).join('')}</div>
+
+    <div class="linha-botoes">
+      <button type="button" class="botao rabisco fino" data-acao="editar-divida" data-id="${d.id}">${ic('i-lapis')} Editar</button>
+    </div>`);
 }
 
 // ------------------------------------------------------------------ anotar (gasto ou entrada)
@@ -406,6 +713,7 @@ function formLanc(id, mesContexto) {
         <div class="escolhas quebra" role="group" aria-labelledby="rot-cat" id="cats"></div></div>
 
       <label class="chave"><span>Repete todo mês<small id="fixo-dica">salário, aluguel, internet, assinatura…</small></span><input type="checkbox" name="fixo" ${st.fixo ? 'checked' : ''}></label>
+      <p class="nota" id="dica-renda" style="font-size:17px;margin:0" hidden>Salário que cai todo mês? Cadastra na Carteira, em Renda, que ele entra sozinho no dia certo.</p>
 
       <div class="linha-botoes" style="margin-top:18px">
         ${l0 ? `<button type="button" class="botao rabisco fino perigo" id="apagar-lanc">${ic('i-lixo')} Apagar</button>` : ''}
@@ -415,7 +723,7 @@ function formLanc(id, mesContexto) {
 
   const form = $('#form-lanc', f);
   const desenharCats = () => {
-    $('#cats', f).innerHTML = CATEGORIAS[st.tipo].map(c =>
+    $('#cats', f).innerHTML = CATEGORIAS[st.tipo].filter(c => !c.oculta).map(c =>
       `<button type="button" class="escolha" data-cat="${c.id}" aria-pressed="${c.id === st.categoria}">${ic('c-' + c.id)}${c.nome}</button>`).join('');
   };
   const atualizar = () => {
@@ -431,7 +739,8 @@ function formLanc(id, mesContexto) {
     const partes = Fatura.dividir(valor, n);
     $('#parc-txt', f).innerHTML = n === 1 ? 'à vista<small>uma vez só</small>' : `${n}x<small>de ${R(partes[partes.length - 1])}</small>`;
     $('#valor-dica', f).textContent = valor && n > 1 ? `total ${R(valor)} em ${n}x` : '';
-    $('#fixo-dica', f).textContent = desp ? 'aluguel, internet, assinatura…' : 'salário, pensão, aluguel recebido…';
+    $('#fixo-dica', f).textContent = desp ? 'aluguel, internet, assinatura…' : 'pensão, aluguel recebido…';
+    $('#dica-renda', f).hidden = desp;
 
     // o recadinho: em qual fatura cai
     const rec = $('#recado', f), cartao = cad.cartoes.find(c => c.id === st.cartaoId);
@@ -513,14 +822,14 @@ function formLanc(id, mesContexto) {
 
 // ------------------------------------------------------------------ tela: pra onde foi
 function telaOnde() {
-  const cad = Dados.caderno, r = Fatura.resumoDoMes(cad, Tela.mes);
+  const cad = Dados.caderno, r = Fatura.resumoDoMes(cad, Tela.mes, hojeChave());
   const cats = Object.entries(r.porCategoria).sort((a, b) => b[1] - a[1]);
   const maior = cats.length ? cats[0][1] : 1;
-  const gastos = r.itens.filter(it => it.lanc.tipo === 'despesa').sort((a, b) => b.valor - a.valor).slice(0, 5);
+  const gastos = r.itens.filter(it => it.lanc.tipo === 'despesa' && it.valor).sort((a, b) => b.valor - a.valor).slice(0, 5);
 
   // os últimos 6 meses: entrou x saiu
   const meses = Array.from({ length: 6 }, (_, i) => Fatura.proximaChave(Tela.mes, i - 5));
-  const serie = meses.map(ch => { const x = Fatura.resumoDoMes(cad, ch); return { ch, entrou: x.entrou, saiu: x.saiu, saldo: x.saldo }; });
+  const serie = meses.map(ch => { const x = Fatura.resumoDoMes(cad, ch, hojeChave()); return { ch, entrou: x.entrou, saiu: x.saiu, saldo: x.saldo }; });
 
   return `<div>
     ${seletorMes()}
@@ -751,6 +1060,28 @@ const acoes = {
     avisar(paga ? 'Fatura paga. Menos uma!' : 'Desmarcada.');
   },
   'novo-cartao': () => formCartao(),
+  renda: d => { fecharFolha(); formRenda(d.id, Tela.aba === 'mes' ? Tela.mes : hojeChave()); },
+  'nova-renda': () => formRenda(),
+  divida: d => abrirDivida(d.id, d.chave),
+  'nova-divida': () => formDivida(),
+  'editar-divida': d => formDivida(d.id),
+  'pagar-divida': d => {
+    const v = Fatura.lerReais($('#valor-pago').value);
+    if (v == null) { avisar('Faltou o valor.'); return; }
+    const antes = Fatura.planoDivida(Dados.caderno.dividas.find(x => x.id === d.id), hojeChave()).linhas.find(l => l.chave === d.chave);
+    Dados.pagarDivida(d.id, d.chave, v);
+    const dv = Dados.caderno.dividas.find(x => x.id === d.id), p = Fatura.planoDivida(dv, hojeChave());
+    render();
+    if (p.quitada) { abrirDivida(d.id); avisar('Quitada! Uma a menos. 🌱'); return; }
+    abrirDivida(d.id, d.chave);
+    avisar(antes && v < antes.esperado ? 'Anotado. Recalculei as próximas.' : v > (antes ? antes.esperado : 0) ? 'Pagou a mais! Termina antes.' : 'Pago! Menos uma.');
+  },
+  'desfazer-pagamento': d => { Dados.pagarDivida(d.id, d.chave, null); render(); abrirDivida(d.id, d.chave); avisar('Desfeito.'); },
+  'modo-divida': d => {
+    const dv = Dados.caderno.dividas.find(x => x.id === d.id);
+    dv.modo = (dv.modo || 'aumentar') === 'aumentar' ? 'esticar' : 'aumentar';
+    Dados.salvarDivida(dv); render(); abrirDivida(d.id, d.chave); avisar('Pronto, recalculado.');
+  },
   'editar-cartao': d => formCartao(d.id),
   'apagar-cartao': async d => {
     const c = Dados.caderno.cartoes.find(x => x.id === d.id);
@@ -824,7 +1155,7 @@ document.addEventListener('focusin', e => { if (e.target.dataset && e.target.dat
 document.addEventListener('pointerout', e => { if (e.target.dataset && e.target.dataset.dica && e.pointerType === 'mouse') { const d = $('.dica-toque'); if (d) d.remove(); } });
 
 // ------------------------------------------------------------------ começar
-const VERSAO = '1.0.0';
+const VERSAO = '1.1.0';
 Dados.carregar();
 aplicarAparencia();
 (function iniciar() {

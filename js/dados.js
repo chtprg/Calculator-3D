@@ -14,10 +14,18 @@ const Dados = {
       atual: null,           // id de quem está anotando
       tema: 'auto',          // auto | papel | noite
       traco: true,           // o traço "ferve" (tremidinho vivo)
-      cadernos: {},          // id da pessoa -> { cartoes, lancamentos, pagas }
+      cadernos: {},          // id da pessoa -> { cartoes, lancamentos, pagas, dividas }
     };
   },
-  cadernoVazio: () => ({ cartoes: [], lancamentos: [], pagas: {} }),
+  cadernoVazio: () => ({ cartoes: [], lancamentos: [], pagas: {}, dividas: [] }),
+
+  // cadernos antigos ganham o que veio depois (nada se perde)
+  migrar() {
+    for (const cad of Object.values(this.estado.cadernos || {})) {
+      if (!Array.isArray(cad.dividas)) cad.dividas = [];
+      if (!cad.pagas) cad.pagas = {};
+    }
+  },
 
   carregar() {
     try {
@@ -26,6 +34,7 @@ const Dados = {
     } catch (e) {
       this.estado = this.vazio();
     }
+    this.migrar();
     // pede ao navegador para não apagar os dados quando faltar espaço
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
     return this.estado;
@@ -80,6 +89,35 @@ const Dados = {
     this.salvar();
   },
 
+  // ---- rendas: salário e trabalhos paralelos (lançamentos de entrada que repetem todo mês)
+  rendas() { return this.caderno.lancamentos.filter(l => l.renda); },
+  ajustarMes(id, chave, valor) {
+    const l = this.caderno.lancamentos.find(x => x.id === id);
+    if (!l) return;
+    l.ajustes = l.ajustes || {};
+    if (valor == null || valor === l.valor) delete l.ajustes[chave]; else l.ajustes[chave] = valor;
+    this.salvar();
+  },
+
+  // ---- dívidas (carnê, boleto, "na palavra")
+  salvarDivida(d) {
+    const lista = this.caderno.dividas, i = lista.findIndex(x => x.id === d.id);
+    if (i > -1) lista[i] = d; else lista.push(Object.assign({ id: this.novoId(), pagamentos: {}, criado: new Date().toISOString() }, d));
+    this.salvar();
+  },
+  apagarDivida(id) {
+    this.caderno.dividas = this.caderno.dividas.filter(d => d.id !== id);
+    this.salvar();
+  },
+  // valor em centavos; null desfaz o pagamento daquele mês
+  pagarDivida(id, chave, valor) {
+    const d = this.caderno.dividas.find(x => x.id === id);
+    if (!d) return;
+    d.pagamentos = d.pagamentos || {};
+    if (valor == null) delete d.pagamentos[chave]; else d.pagamentos[chave] = valor;
+    this.salvar();
+  },
+
   // ---- faturas pagas
   faturaPaga(cartaoId, chave) { return !!this.caderno.pagas[cartaoId + '|' + chave]; },
   marcarPaga(cartaoId, chave, paga) {
@@ -98,6 +136,7 @@ const Dados = {
     delete obj.app; delete obj.salvoEm;
     const atual = this.estado.atual;
     this.estado = Object.assign(this.vazio(), obj);
+    this.migrar();
     if (this.estado.usuarios.some(u => u.id === atual)) this.estado.atual = atual;
     this.salvar();
   },

@@ -500,3 +500,41 @@ details.ver-tabela summary { cursor: pointer; color: var(--tinta2); padding: 8px
 .pergunta::backdrop { background: rgba(20, 14, 24, .5); }
 .pergunta p { margin: 0 0 4px; font: 700 24px/1.2 'Caveat', cursive; }
 .pergunta p small { display: block; font: 400 15px/1.35 'Alegreya Sans', sans-serif; color: var(--tinta2); margin-top: 6px; }
+
+/* ------------------------------------------------------------ renda e dívidas */
+.tinta2 { color: var(--tinta2); }
+.renda-ic { color: var(--verde); background: var(--papel2); }
+.renda-ic .ic { width: 26px; height: 26px; }
+.ficha .valor small.tinta2 { font-size: 13px; }
+.carimbo.mini { font-size: 10px; padding: 2px 4px 1px; border-width: 1.2px; transform: rotate(-3deg); vertical-align: 1px; }
+.carimbo.pago, .carimbo.quitada, .carimbo.em-dia { color: var(--verde); }
+.carimbo.previsto { color: var(--barra); }
+.carimbo.atrasado, .carimbo.atrasada { color: var(--vermelho); }
+.limite i.verde { background: repeating-linear-gradient(-45deg, var(--verde) 0 2px, transparent 2px 5px); border-right-color: var(--verde); }
+
+/* o carnê: um bilhete destacável, com o picote do lado */
+.carne {
+  display: grid; gap: 6px; width: 100%; text-align: left; border: 0; padding: 12px 14px 12px 22px;
+  background: var(--papel2); box-shadow: 2px 3px 0 var(--sombra);
+}
+.carne::after { /* o picote */
+  content: ''; position: absolute; left: 9px; top: 10px; bottom: 10px; width: 0;
+  border-left: 2px dotted var(--tinta3);
+}
+.carne-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.carne-topo .meio { min-width: 0; }
+.carne-topo b { display: block; font: 700 23px/1.1 'Caveat', cursive; overflow-wrap: anywhere; }
+.carne-topo small { color: var(--tinta2); font-size: 14px; }
+.carne-falta { font-size: 15.5px; color: var(--tinta2); }
+.carne-falta b { color: var(--vermelho); font-size: 18px; }
+.carne .limite { margin: 2px 0 0; height: 10px; }
+.carne-pe { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 14px; color: var(--tinta2); }
+.carne-pe b { color: var(--tinta); }
+.lanc.atual { background: var(--marca); }
+.lanc .valor .carimbo.mini { margin-left: 4px; }
+a.escolha { color: inherit; text-decoration: none; }
+#sec-renda, #sec-cartoes, #sec-dividas { scroll-margin-top: 12px; }
+@media (max-width: 360px) {
+  .saldo { gap: 8px; }
+  .saldo .broto { width: 62px; height: 62px; }
+}

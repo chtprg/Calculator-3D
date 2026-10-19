@@ -112,3 +112,73 @@ test('reais: escrever e ler', () => {
   assert.equal(F.lerReais('R$ 9,90'), 990);
   assert.equal(F.lerReais(''), null);
 });
+
+// ---------------------------------------------------------------- renda e dívidas
+test('salário fixo cai todo mês no dia certo, e um mês pode vir diferente', () => {
+  const dados = { lancamentos: [{ id: 's', tipo: 'receita', valor: 250000, data: '2026-10-10', fixo: true, renda: 'salario', ajustes: { '2026-12': 310000 } }] };
+  const nov = F.itensDoMes(dados, '2026-11');
+  assert.equal(nov[0].data, '2026-11-10');
+  assert.equal(nov[0].valor, 250000);
+  assert.equal(F.resumoDoMes(dados, '2026-12').entrou, 310000); // dezembro veio com hora extra
+  assert.equal(F.resumoDoMes(dados, '2027-01').entrou, 250000);
+});
+
+// o exemplo do Rosival: deve R$ 1.475,76 e paga R$ 200 por mês
+const carne = { id: 'd', nome: 'Carnê da loja', total: 147576, parcela: 20000, dia: 15, inicio: '2026-10', pagamentos: {} };
+
+test('dívida: em quantos meses termina', () => {
+  const p = F.planoDivida(carne);
+  assert.equal(p.n, 8);
+  assert.equal(p.fim, '2027-05');
+  assert.deepEqual(p.linhas.map(l => l.valor), [20000, 20000, 20000, 20000, 20000, 20000, 20000, 7576]);
+  assert.equal(p.proxima.chave, '2026-10');
+});
+
+test('dívida: pagou menos, as próximas sobem para terminar na mesma data', () => {
+  // com folga na última parcela, só a última sobe
+  const a = F.planoDivida({ ...carne, pagamentos: { '2026-10': 15000 } });
+  assert.equal(a.fim, '2027-05');
+  assert.equal(a.restante, 132576);
+  assert.deepEqual(a.linhas.map(l => l.valor), [15000, 20000, 20000, 20000, 20000, 20000, 20000, 12576]);
+  // sem folga, as próximas parcelas aumentam por igual
+  const b = F.planoDivida({ ...carne, total: 160000, pagamentos: { '2026-10': 15000 } });
+  assert.equal(b.fim, '2027-05');
+  assert.equal(b.linhas[1].valor, 20715); // 1.450,00 em 7 meses
+  assert.equal(b.linhas.reduce((s, l) => s + l.valor, 0), 160000);
+});
+
+test('dívida: modo esticar mantém a parcela e termina depois', () => {
+  const p = F.planoDivida({ ...carne, total: 160000, modo: 'esticar', pagamentos: { '2026-10': 15000 } });
+  assert.equal(p.fim, '2027-06');
+  assert.equal(p.linhas[1].valor, 20000);
+  assert.equal(p.linhas[p.linhas.length - 1].valor, 5000);
+});
+
+test('dívida: pagou mais, termina antes', () => {
+  const p = F.planoDivida({ ...carne, pagamentos: { '2026-10': 60000 } });
+  assert.equal(p.fim, '2027-03');
+});
+
+test('dívida: mês que passou sem pagar fica atrasado e entra no mês', () => {
+  const p = F.planoDivida(carne, '2026-12');
+  assert.deepEqual(p.linhas.slice(0, 3).map(l => l.tipo), ['atrasado', 'atrasado', 'previsto']);
+  assert.equal(p.atrasados, 2);
+  assert.equal(p.fim, '2027-05');
+  assert.equal(p.linhas[2].valor, Math.ceil(147576 / 6)); // 6 meses para pagar tudo
+});
+
+test('dívida: quitada', () => {
+  const p = F.planoDivida({ ...carne, pagamentos: { '2026-10': 147576 } });
+  assert.equal(p.quitada, true);
+  assert.equal(p.linhas.length, 1);
+  assert.equal(p.proxima, null);
+});
+
+test('resumo do mês conta a parcela da dívida', () => {
+  const dados = { dividas: [{ ...carne, pagamentos: { '2026-10': 15000 } }], lancamentos: [] };
+  const out = F.resumoDoMes(dados, '2026-10', '2026-10');
+  assert.equal(out.dividas, 15000);
+  assert.equal(out.saldo, -15000);
+  assert.equal(out.itens[0].data, '2026-10-15');
+  assert.equal(F.resumoDoMes(dados, '2026-11', '2026-10').dividas, 20000);
+});

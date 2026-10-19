@@ -67,13 +67,71 @@
   }
   const fixoValeNoMes = (lanc, chave) =>
     compararChave(chave, lanc.data.slice(0, 7)) >= 0 && (!lanc.ate || compararChave(chave, lanc.ate) <= 0);
+  // o valor de um fixo num mês: o de sempre, ou o ajuste daquele mês ("este mês veio diferente")
+  const valorNoMes = (lanc, chave) => (lanc.ajustes && lanc.ajustes[chave] != null ? lanc.ajustes[chave] : lanc.valor);
+  const mesesEntre = (a, b) => { const [ya, ma] = lerChave(a), [yb, mb] = lerChave(b); return (yb - ya) * 12 + (mb - ma); };
+
+  // ---------------------------------------------------------------- dívidas (carnê, boleto, "na palavra")
+  // Uma dívida: { total, parcela, dia, inicio: 'AAAA-MM', modo, pagamentos: { 'AAAA-MM': centavos } }
+  // - O combinado: pagar `parcela` por mês a partir de `inicio`. A última parcela é o que sobrar.
+  //   A data de terminar fica fixa: inicio + (quantas parcelas cabem no total) - 1.
+  // - Pagou menos num mês? modo 'aumentar' (o padrão): as próximas parcelas sobem para terminar na data.
+  //   modo 'esticar': as parcelas continuam iguais e a dívida termina mais tarde.
+  // - Pagou mais: termina antes.
+  // - Mês que já passou sem pagamento marcado conta como não pago (atrasado).
+  function planoDivida(d, hojeChave) {
+    const parcela = Math.max(1, d.parcela | 0);
+    const n = Math.max(1, Math.ceil(d.total / parcela));
+    const fim = proximaChave(d.inicio, n - 1);
+    // quanto pagar no mês `ch`, com `saldo` ainda devendo
+    const combinado = (ch, saldo) => {
+      const restantes = mesesEntre(ch, fim) + 1;
+      const v = d.modo !== 'esticar' && restantes >= 1 ? Math.max(parcela, Math.ceil(saldo / restantes)) : parcela;
+      return Math.min(v, saldo);
+    };
+    let saldo = d.total, pago = 0, atrasados = 0;
+    const linhas = [];
+    for (let ch = d.inicio, i = 0; saldo > 0 && i < 600; ch = proximaChave(ch), i++) {
+      const esperado = combinado(ch, saldo);
+      const reg = d.pagamentos && d.pagamentos[ch];
+      if (reg != null) {
+        const v = Math.min(reg, saldo);
+        saldo -= v; pago += v;
+        linhas.push({ chave: ch, tipo: 'pago', valor: v, esperado });
+      } else if (hojeChave && ch < hojeChave) {
+        atrasados++;
+        linhas.push({ chave: ch, tipo: 'atrasado', valor: 0, esperado });
+      } else {
+        saldo -= esperado;
+        linhas.push({ chave: ch, tipo: 'previsto', valor: esperado, esperado });
+      }
+    }
+    const proxima = linhas.find(l => l.tipo === 'previsto') || null;
+    const restante = d.total - pago;
+    return {
+      linhas, n, fimCombinado: fim, pago, restante, atrasados, proxima,
+      fim: linhas.length ? linhas[linhas.length - 1].chave : d.inicio,
+      quitada: restante <= 0,
+    };
+  }
 
   // Tudo que mexe no dinheiro do mês `chave`.
   // Compras no cartão entram pela fatura que VENCE no mês (é quando o dinheiro sai).
-  // Devolve uma lista de "itens": { lanc, valor, data, parcela, deParcelas, fatura? }
-  function itensDoMes(dados, chave) {
+  // `hojeChave` (opcional) separa o passado do futuro nas dívidas.
+  // Devolve uma lista de "itens": { lanc, valor, data, parcela, deParcelas, fatura?, divida? }
+  function itensDoMes(dados, chave, hojeChave) {
     const cartoes = new Map((dados.cartoes || []).map(c => [c.id, c]));
     const itens = [];
+    for (const d of dados.dividas || []) {
+      const p = planoDivida(d, hojeChave), i = p.linhas.findIndex(l => l.chave === chave);
+      if (i < 0) continue;
+      const ln = p.linhas[i], [a, m] = lerChave(chave);
+      itens.push({
+        lanc: { id: d.id, tipo: 'despesa', descricao: d.nome, categoria: 'dividas' },
+        divida: d, situacao: ln.tipo, esperado: ln.esperado,
+        valor: ln.valor, data: isoDe(a, m, diaSeguro(a, m, d.dia || 1)), parcela: i + 1, deParcelas: p.linhas.length,
+      });
+    }
     for (const l of dados.lancamentos || []) {
       const cartao = l.forma === 'cartao' ? cartoes.get(l.cartaoId) : null;
       if (cartao) {
@@ -82,14 +140,14 @@
           ? [-2, -1, 0].map(k => proximaChave(chave, k)).filter(ch => fixoValeNoMes(l, ch)).map(ch => dataNoMes(l, ch))
           : [l.data];
         for (const dataCompra of compras) {
-          const partes = l.fixo ? [l.valor] : dividir(l.valor, l.parcelas || 1);
+          const partes = l.fixo ? [valorNoMes(l, dataCompra.slice(0, 7))] : dividir(l.valor, l.parcelas || 1);
           partes.forEach((valor, i) => {
             const f = faturaDaCompra(cartao, dataCompra, i);
             if (f.chave === chave) itens.push({ lanc: l, valor, data: dataCompra, parcela: i + 1, deParcelas: partes.length, fatura: f, cartao });
           });
         }
       } else if (l.fixo) {
-        if (fixoValeNoMes(l, chave)) itens.push({ lanc: l, valor: l.valor, data: dataNoMes(l, chave), parcela: 1, deParcelas: 1 });
+        if (fixoValeNoMes(l, chave)) itens.push({ lanc: l, valor: valorNoMes(l, chave), data: dataNoMes(l, chave), parcela: 1, deParcelas: 1 });
       } else if (l.data.slice(0, 7) === chave) {
         itens.push({ lanc: l, valor: l.valor, data: l.data, parcela: 1, deParcelas: 1 });
       }
@@ -102,18 +160,20 @@
     itensDoMes(dados, chave).filter(it => it.cartao && it.cartao.id === cartaoId);
 
   // o resumo do mês: o que entrou, o que saiu (direto e em faturas) e o saldo
-  function resumoDoMes(dados, chave) {
-    const itens = itensDoMes(dados, chave);
-    let entrou = 0, direto = 0, faturas = 0;
+  function resumoDoMes(dados, chave, hojeChave) {
+    const itens = itensDoMes(dados, chave, hojeChave);
+    let entrou = 0, direto = 0, faturas = 0, dividas = 0;
     const porCategoria = {}, porCartao = {};
     for (const it of itens) {
       if (it.lanc.tipo === 'receita') { entrou += it.valor; continue; }
       if (it.cartao) { faturas += it.valor; porCartao[it.cartao.id] = (porCartao[it.cartao.id] || 0) + it.valor; }
+      else if (it.divida) dividas += it.valor;
       else direto += it.valor;
       const cat = it.lanc.categoria || 'outros';
-      porCategoria[cat] = (porCategoria[cat] || 0) + it.valor;
+      if (it.valor) porCategoria[cat] = (porCategoria[cat] || 0) + it.valor;
     }
-    return { itens, entrou, direto, faturas, saiu: direto + faturas, saldo: entrou - direto - faturas, porCategoria, porCartao };
+    const saiu = direto + faturas + dividas;
+    return { itens, entrou, direto, faturas, dividas, saiu, saldo: entrou - saiu, porCategoria, porCartao };
   }
 
   // a situação de uma fatura em relação a hoje
@@ -146,7 +206,8 @@
   const Fatura = {
     diasNoMes, somarMeses, chaveDe, lerChave, lerData, isoDe, proximaChave, compararChave,
     datasDoFechamento, faturaDaCompra, faturaPelaChave, faturaAberta, dividir,
-    itensDoMes, itensDaFatura, resumoDoMes, situacao, emReais, lerReais, fixoValeNoMes,
+    itensDoMes, itensDaFatura, resumoDoMes, situacao, emReais, lerReais, fixoValeNoMes, valorNoMes,
+    mesesEntre, planoDivida,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = Fatura;
   else raiz.Fatura = Fatura;

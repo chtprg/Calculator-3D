@@ -23,6 +23,13 @@ Registro das decisões do Caderninho, para nada se perder entre sessões.
 - **O Broto** aparece no bilhete do mês e muda de humor com o saldo. Frases calmas, sem bronca: *"Esse mês apertou… mas agora a gente sabe pra onde foi."*
 - **Gráfico:** entrou em verde cheio e saiu em vermelho riscado, para dar para separar mesmo sem enxergar cor; sempre com tabela.
 
+## Renda e dívidas (19/10/2026, pedido do Rosival)
+
+- **Renda:** salário (cai todo dia 10) e **trabalhos paralelos**, cada um com o seu dia. Entram sozinhos todo mês, sem precisar anotar. Um mês diferente pode ser ajustado só naquele mês.
+- **Dívidas fora do cartão** (carnê, boleto, "na palavra", comum em cidade pequena): anota o valor que deve e quanto paga por mês; o app calcula em quantos meses termina.
+- **Pagou menos num mês:** o padrão é **terminar na mesma data**, com as próximas parcelas subindo. Quando a última parcela tem folga, ela absorve a diferença primeiro (ex.: R$ 1.475,76 a R$ 200/mês, pagando R$ 150 em outubro: continua terminando em maio, e a última vai de R$ 75,76 para R$ 125,76). Dá para trocar para "manter a parcela e terminar depois".
+- A aba **Cartões** virou **Carteira**: Renda, Cartões e Dívidas.
+
 ## Ideias para depois (ainda não feitas)
 
 - Os dois verem um resumo junto (o "caderno da casa"), se quiserem: precisaria de sincronizar entre os celulares.

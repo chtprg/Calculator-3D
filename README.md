@@ -15,6 +15,13 @@ O caderno de contas da casa. Um app pra duas pessoas, cada uma com o seu caderno
   - Parcelado: cada parcela cai numa fatura, uma depois da outra. Os centavos que sobram da divisão vão na primeira.
   - Mês curto: fechamento no dia 31 vira o último dia do mês.
 - **O mês.** Quanto entrou, quanto saiu no Pix/débito/dinheiro, quanto foi de fatura, e a **sobra** (verde) ou o que **faltou** (vermelho). Compras no cartão contam no mês em que a fatura **vence**, porque é aí que o dinheiro sai da conta.
+- **Renda (na aba Carteira).** O salário e os trabalhos paralelos, cada um com o dia em que cai (ex.: todo dia 10). Todo mês ele entra sozinho no caderno: antes do dia aparece como "vai entrar", depois como "caiu". Se um mês veio diferente (hora extra, desconto), muda só aquele mês. Saiu do emprego? "Parar" mantém os meses de antes.
+- **Dívidas e carnês (na aba Carteira).** Para o que é pago fora do cartão: carnê, boleto, "na palavra". Você anota quanto deve e quanto paga por mês, e ele calcula quando termina.
+  - Exemplo: deve R$ 1.475,76 e paga R$ 200 por mês. São 8 meses (7 de R$ 200 e a última de R$ 75,76).
+  - Todo mês é só tocar em "Paguei". Pagou menos (R$ 150 em vez de R$ 200)? Ele refaz a conta para terminar na mesma data: primeiro a última parcela absorve a diferença; quando não dá mais, as próximas parcelas sobem por igual.
+  - Prefere manter a parcela igual e terminar depois? Um toque troca ("prefiro assim"). Pagou a mais? Termina antes.
+  - Mês que passou sem pagamento marcado aparece como "não pago".
+  - As parcelas entram no resumo do mês, em "Dívidas e carnês".
 - **Repete todo mês.** Salário, aluguel, internet, assinaturas. Apagar um fixo num mês depois do primeiro pergunta se é pra **parar de repetir** (o passado fica).
 - **Faturas.** Ver cada fatura (anterior e próximas), com carimbo de *aberta*, *fechada*, *vencida* ou *paga*, e marcar como paga. Com o limite do cartão, mostra quanto já está comprometido.
 - **Pra onde foi.** Gastos por categoria, os 5 maiores gastos do mês e os últimos 6 meses (entrou × saiu), também em tabela.
@@ -59,7 +66,7 @@ Com o site publicado, usar o **PWABuilder** (pwabuilder.com) › pacote Android 
 |---|---|
 | `index.html` | a página, com os ícones de rabisco e os filtros do traço |
 | `css/app.css` | o papel, a tinta, os dois temas |
-| `js/fatura.js` | **o cálculo das faturas e do mês** (sem tela; é o que os testes conferem) |
+| `js/fatura.js` | **o cálculo das faturas, das dívidas e do mês** (sem tela; é o que os testes conferem) |
 | `js/dados.js` | onde os dados são guardados (localStorage) e a cópia de segurança |
 | `js/bancos.js` | a lista de bancos, com a cor de cada cartão |
 | `js/desenho.js` | a textura de papel, o Broto e o selo do banco |
