@@ -22,6 +22,16 @@ O caderno de contas da casa. Um app pra duas pessoas, cada uma com o seu caderno
   - Prefere manter a parcela igual e terminar depois? Um toque troca ("prefiro assim"). Pagou a mais? Termina antes.
   - Mês que passou sem pagamento marcado aparece como "não pago".
   - As parcelas entram no resumo do mês, em "Dívidas e carnês".
+- **Lembretes (o sininho).** Quando o app abre, aparece um bilhete:
+  - 3 dias antes de vencer uma fatura ou parcela: *"A fatura do Nubank vence em 3 dias: R$ 145,89"*;
+  - venceu e não foi marcada: *"Já pagou a fatura do Ourocard?"*, com "Já paguei" e "Ainda não" (pergunta de novo no dia seguinte);
+  - parcela de dívida atrasada: "Paguei R$ 200", "Paguei outro valor" ou "Ainda não";
+  - 15 dias sem salvar a cópia de segurança.
+  Avisos com o celular fechado (notificação do sistema) precisariam de um servidor; por isso o lembrete aparece ao abrir o app.
+- **Saúde.** Uma aba com três partes:
+  - *Como estou:* uma nota de 0 a 100 do mês (sobra, parcelas e dívidas, contas em dia e reserva de emergência), a régua 50/30/20 e conselhos feitos com os números de vocês ("Assinaturas: R$ 55,90 por mês, R$ 670,80 por ano", "Pagando R$ 50 a mais, o carnê termina um mês antes").
+  - *Pra onde foi:* categorias, maiores gastos e os últimos 6 meses.
+  - *Dicas:* 39 dicas escritas para o Brasil (organizar, gastar menos, cartão, sair das dívidas, reserva, investir). A "dica de hoje" muda todo dia e escolhe o que combina com a situação (quem tem dívida vê primeiro as dicas de dívida). É conteúdo para aprender, não recomendação de investimento.
 - **Repete todo mês.** Salário, aluguel, internet, assinaturas. Apagar um fixo num mês depois do primeiro pergunta se é pra **parar de repetir** (o passado fica).
 - **Faturas.** Ver cada fatura (anterior e próximas), com carimbo de *aberta*, *fechada*, *vencida* ou *paga*, e marcar como paga. Com o limite do cartão, mostra quanto já está comprometido.
 - **Pra onde foi.** Gastos por categoria, os 5 maiores gastos do mês e os últimos 6 meses (entrou × saiu), também em tabela.
@@ -67,6 +77,8 @@ Com o site publicado, usar o **PWABuilder** (pwabuilder.com) › pacote Android 
 | `index.html` | a página, com os ícones de rabisco e os filtros do traço |
 | `css/app.css` | o papel, a tinta, os dois temas |
 | `js/fatura.js` | **o cálculo das faturas, das dívidas e do mês** (sem tela; é o que os testes conferem) |
+| `js/saude.js` | lembretes, termômetro e conselhos com os números (sem tela, com testes) |
+| `js/dicas.js` | a biblioteca de dicas |
 | `js/dados.js` | onde os dados são guardados (localStorage) e a cópia de segurança |
 | `js/bancos.js` | a lista de bancos, com a cor de cada cartão |
 | `js/desenho.js` | a textura de papel, o Broto e o selo do banco |

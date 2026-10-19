@@ -7,7 +7,8 @@ A alma é a mesma dos outros projetos do Rosival (veja o `CLAUDE.md` do reposit�
 ## Regras deste projeto
 
 - **JavaScript puro, sem frameworks e sem build.** Abre direto no navegador.
-- **O cálculo fica em `js/fatura.js`, sem tela.** Toda mudança de regra de fatura ou de mês ganha teste em `testes/fatura.test.js` (`npm test`).
+- **O cálculo fica sem tela, em `js/fatura.js` (faturas, mês, dívidas) e `js/saude.js` (lembretes, termômetro).** Toda mudança de regra ganha teste em `testes/` (`npm test`).
+- **Dicas (`js/dicas.js`):** só informação confirmada, sem taxas que mudam; nunca prometer rendimento.
 - **Dinheiro sempre em centavos (número inteiro).** Nunca somar reais com vírgula.
 - **Datas em texto `AAAA-MM-DD`**, no dia do aparelho (não em UTC).
 - **Dados do usuário nunca se perdem.** Mudou o formato? Faça a migração em `Dados.carregar()`. A cópia de segurança tem que continuar abrindo.

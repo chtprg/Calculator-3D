@@ -17,13 +17,15 @@ const Dados = {
       cadernos: {},          // id da pessoa -> { cartoes, lancamentos, pagas, dividas }
     };
   },
-  cadernoVazio: () => ({ cartoes: [], lancamentos: [], pagas: {}, dividas: [] }),
+  cadernoVazio: () => ({ cartoes: [], lancamentos: [], pagas: {}, dividas: [], avisos: {}, reserva: 0 }),
 
   // cadernos antigos ganham o que veio depois (nada se perde)
   migrar() {
+    if (!this.estado.criadoEm) this.estado.criadoEm = new Date().toISOString();
     for (const cad of Object.values(this.estado.cadernos || {})) {
       if (!Array.isArray(cad.dividas)) cad.dividas = [];
       if (!cad.pagas) cad.pagas = {};
+      if (!cad.avisos) cad.avisos = {};
     }
   },
 
@@ -117,6 +119,20 @@ const Dados = {
     if (valor == null) delete d.pagamentos[chave]; else d.pagamentos[chave] = valor;
     this.salvar();
   },
+
+  // ---- lembretes: até quando cada um fica quieto
+  silenciar(id, ate) {
+    const av = this.caderno.avisos || (this.caderno.avisos = {});
+    av[id] = ate;
+    // limpa os muito antigos
+    const corte = new Date(Date.now() - 200 * 864e5).toISOString().slice(0, 10);
+    for (const k of Object.keys(av)) if (av[k] < corte) delete av[k];
+    this.salvar();
+  },
+  copiaSalva(hoje) { this.estado.ultimaCopia = hoje; this.salvar(); },
+
+  // ---- reserva de emergência (quanto tem guardado)
+  salvarReserva(valor) { this.caderno.reserva = Math.max(0, valor | 0); this.salvar(); },
 
   // ---- faturas pagas
   faturaPaga(cartaoId, chave) { return !!this.caderno.pagas[cartaoId + '|' + chave]; },

@@ -102,8 +102,13 @@ const fs = require('fs'); fs.mkdirSync(pasta, { recursive: true });
     await p.click('[data-acao=fatura][aria-label="Fatura anterior"]');
     await foto('10-fatura-anterior');
     await p.click('#folha [data-acao=fechar]');
-    await p.click('[data-aba=onde]');
+    await p.click('[data-aba=saude]');
+    await foto('11a-saude');
+    await p.click('[data-seg=onde]');
     await foto('11-pra-onde-foi');
+    await p.click('[data-seg=dicas]');
+    await p.click('.dica-item summary >> nth=0');
+    await foto('11b-dicas');
     await p.click('[data-aba=ajustes]');
     await foto('12-ajustes');
     // editar e confirmar apagar
@@ -113,6 +118,12 @@ const fs = require('fs'); fs.mkdirSync(pasta, { recursive: true });
     await foto('13-confirmar');
     await p.click('#pergunta-nao');
     await p.click('#folha [data-acao=fechar]');
+    // reabrindo o app dias depois: aparecem os lembretes
+    await p.goto(URL0.replace('2026-10-19', '2026-11-03'));
+    await p.waitForSelector('#lembrete[open]');
+    await foto('14-lembrete');
+    await p.click('#lembrete [data-lem=nao]');
+    await p.click('#lembrete [data-lem=fechar]').catch(() => {});
     // a outra pessoa tem o caderno vazio
     await p.click('#quem');
     await p.click('[data-pessoa=p2]');

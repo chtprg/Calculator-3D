@@ -44,6 +44,7 @@
   <symbol id="i-cadeado" viewBox="0 0 24 24"><path d="M6 11h12v9H6Z M8.5 11V8a3.5 3.5 0 0 1 7 0v3 M12 14.5v2.5"/></symbol>
   <symbol id="i-baixar" viewBox="0 0 24 24"><path d="M12 4v11 M7 10.5l5 5 5-5 M5 19.5h14"/></symbol>
   <symbol id="i-subir" viewBox="0 0 24 24"><path d="M12 15.5v-11 M7 9l5-5 5 5 M5 19.5h14"/></symbol>
+  <symbol id="i-sino" viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.6 2H4.4Z M10 21a2 2 0 0 0 4 0"/></symbol>
   <symbol id="i-pessoas" viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3"/><circle cx="16.5" cy="9.5" r="2.5"/><path d="M3.5 19c.5-3.5 2.7-5.5 5.5-5.5s5 2 5.5 5.5 M14.5 14c2.8-.6 5.4.9 6 4.5"/></symbol>
 
   <!-- categorias -->
@@ -74,14 +75,17 @@
 <div id="app">
   <header class="topo">
     <h1 class="marca"><span>Caderninho</span></h1>
-    <button class="quem" id="quem" type="button" aria-label="Trocar de pessoa"></button>
+    <div class="topo-dir">
+      <button class="sino" id="sino" type="button" aria-label="Lembretes" hidden><svg class="ic"><use href="#i-sino"/></svg><span class="bolinha" id="sino-n"></span></button>
+      <button class="quem" id="quem" type="button" aria-label="Trocar de pessoa"></button>
+    </div>
   </header>
   <main id="tela" tabindex="-1"></main>
   <nav class="abas" aria-label="Seções">
     <button type="button" data-aba="mes" aria-label="O mês"><svg class="ic"><use href="#i-mes"/></svg><span>Mês</span></button>
     <button type="button" data-aba="carteira" aria-label="Carteira: renda, cartões e dívidas"><svg class="ic"><use href="#i-cartao"/></svg><span>Carteira</span></button>
     <button type="button" class="anotar" id="anotar" aria-label="Anotar um gasto ou entrada"><svg class="ic"><use href="#i-mais"/></svg></button>
-    <button type="button" data-aba="onde" aria-label="Pra onde foi o dinheiro"><svg class="ic"><use href="#i-onde"/></svg><span>Pra onde foi</span></button>
+    <button type="button" data-aba="saude" aria-label="Saúde financeira, pra onde foi e dicas"><svg class="ic"><use href="#c-saude"/></svg><span>Saúde</span></button>
     <button type="button" data-aba="ajustes" aria-label="Ajustes"><svg class="ic"><use href="#i-ajustes"/></svg><span>Ajustes</span></button>
   </nav>
 </div>
@@ -92,6 +96,9 @@
 
 <!-- tela de entrada: quem está anotando -->
 <section class="entrada" id="entrada" hidden></section>
+
+<!-- lembretes: fatura vencendo, conta atrasada, cópia de segurança -->
+<dialog class="pergunta lembrete rabisco" id="lembrete" aria-labelledby="lembrete-txt"></dialog>
 
 <!-- bilhete de confirmação (apagar, trocar…) -->
 <dialog class="pergunta rabisco" id="pergunta" aria-labelledby="pergunta-txt">
@@ -105,6 +112,8 @@
 <div class="aviso" id="aviso" role="status" aria-live="polite"></div>
 
 <script src="js/fatura.js"></script>
+<script src="js/saude.js"></script>
+<script src="js/dicas.js"></script>
 <script src="js/bancos.js"></script>
 <script src="js/dados.js"></script>
 <script src="js/desenho.js"></script>

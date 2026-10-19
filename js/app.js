@@ -108,7 +108,8 @@ function render() {
   $('#quem').innerHTML = p ? `<span>${esc(p.nome)}</span><span class="avatar" style="--cor:${p.cor}" aria-hidden="true">${esc(p.nome.trim()[0] || '?')}</span>` : '';
   $$('.abas [data-aba]').forEach(b => b.dataset.aba === Tela.aba ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
   const tela = $('#tela');
-  tela.innerHTML = ({ mes: telaMes, carteira: telaCarteira, onde: telaOnde, ajustes: telaAjustes })[Tela.aba]();
+  tela.innerHTML = ({ mes: telaMes, carteira: telaCarteira, saude: telaSaude, ajustes: telaAjustes })[Tela.aba]();
+  atualizarSino();
 }
 function irPara(aba) {
   Tela.aba = aba; render(); scrollTo({ top: 0 });
@@ -202,6 +203,8 @@ function telaMes() {
         ${r.dividas || cad.dividas.length ? `<div><span>Dívidas e carnês</span><b class="neg">− ${R(r.dividas)}</b></div>` : ''}
       </div>
     </section>
+
+    ${Tela.mes === hoje.slice(0, 7) && !vazio ? cartaoDica(Saude.dicaDoDia(DICAS, cad, hoje), true) : ''}
 
     ${faturas.length ? `<h3 class="titulo">Faturas deste mês</h3><div class="fichas">${faturas.map(({ c, f, total, sit }) => `
       <button type="button" class="ficha rabisco fino" data-acao="fatura" data-cartao="${c.id}" data-chave="${Tela.mes}">
@@ -812,11 +815,218 @@ function formLanc(id, mesContexto) {
     if (!l0) {
       const cartao = noCartao && cad.cartoes.find(c => c.id === st.cartaoId);
       const destino = cartao ? Fatura.faturaDaCompra(cartao, novo.data).chave : novo.data.slice(0, 7);
-      if (Tela.aba !== 'mes' && Tela.aba !== 'onde') Tela.aba = 'mes';
+      if (Tela.aba !== 'mes' && !(Tela.aba === 'saude' && Tela.seg === 'onde')) Tela.aba = 'mes';
       Tela.mes = destino;
       avisar(cartao ? `Anotado! Cai na fatura de ${MESES[Fatura.lerChave(destino)[1]]}.` : desp ? 'Anotado no caderno.' : 'Que bom! Anotado.');
     } else avisar('Guardado.');
     render();
+  });
+}
+
+// ------------------------------------------------------------------ lembretes (o pop-up quando o app abre)
+const quando = dias => (dias === 0 ? 'hoje' : dias === 1 ? 'amanhã' : `em ${dias} dias`);
+function listaLembretes() {
+  return Saude.lembretes(Dados.caderno, hojeIso(), { ultimaCopia: Dados.estado.ultimaCopia, criadoEm: Dados.estado.criadoEm });
+}
+function atualizarSino() {
+  const n = Dados.pessoa ? listaLembretes().length : 0;
+  $('#sino').hidden = !n;
+  $('#sino-n').textContent = n || '';
+  $('#sino').setAttribute('aria-label', n === 1 ? '1 lembrete' : `${n} lembretes`);
+}
+
+// mostra os lembretes um de cada vez, num bilhete
+function mostrarLembretes() {
+  const dlg = $('#lembrete');
+  const fila = listaLembretes();
+  if (!fila.length) { if (dlg.open) dlg.close(); atualizarSino(); return; }
+  const l = fila[0], total = fila.length;
+  const nomeL = l.cartao ? `a fatura do ${esc(l.cartao.apelido)}` : l.divida ? esc(l.divida.nome) : '';
+  let titulo = '', texto = '', botoes = '', humor = 'contente';
+  if (l.tipo === 'fatura-atrasada') {
+    humor = 'apertado';
+    titulo = `Já pagou ${nomeL}?`;
+    texto = `Venceu ${dataBonita(l.fatura.vencimento)}: ${R(l.valor)}.`;
+    botoes = `<button type="button" class="botao rabisco fino" data-lem="nao">Ainda não</button>
+      <button type="button" class="botao principal rabisco" data-lem="pagar">${ic('i-check')} Já paguei</button>`;
+  } else if (l.tipo === 'fatura-vence') {
+    titulo = `${nomeL[0].toUpperCase() + nomeL.slice(1)} vence ${quando(l.dias)}`;
+    texto = `Dia ${dataBonita(l.fatura.vencimento)}: ${R(l.valor)}.`;
+    botoes = `<button type="button" class="botao rabisco fino" data-lem="pagar">Já paguei</button>
+      <button type="button" class="botao principal rabisco" data-lem="ok">Tá bom</button>`;
+  } else if (l.tipo === 'divida-atrasada') {
+    humor = 'apertado';
+    titulo = `Já pagou ${nomeL}?`;
+    texto = `A parcela de ${MESES[Fatura.lerChave(l.chave)[1]]} era ${dataBonita(l.ate)}: ${R(l.valor)}.`;
+    botoes = `<button type="button" class="botao rabisco fino" data-lem="nao">Ainda não</button>
+      <button type="button" class="botao rabisco fino" data-lem="outro">Paguei outro valor</button>
+      <button type="button" class="botao principal rabisco" data-lem="pagar">${ic('i-check')} Paguei ${R(l.valor)}</button>`;
+  } else if (l.tipo === 'divida-vence') {
+    titulo = `${nomeL} vence ${quando(l.dias)}`;
+    texto = `Dia ${dataBonita(l.ate)}: ${R(l.valor)}.`;
+    botoes = `<button type="button" class="botao rabisco fino" data-lem="pagar">Já paguei</button>
+      <button type="button" class="botao principal rabisco" data-lem="ok">Tá bom</button>`;
+  } else if (l.tipo === 'copia') {
+    titulo = l.nunca ? 'Que tal salvar uma cópia do caderno?' : `Faz ${l.dias} dias sem cópia de segurança`;
+    texto = 'Se o celular quebrar ou sumir, a cópia é o que guarda tudo. Leva um segundo.';
+    botoes = `<button type="button" class="botao rabisco fino" data-lem="depois">Depois</button>
+      <button type="button" class="botao principal rabisco" data-lem="copia">${ic('i-baixar')} Salvar cópia</button>`;
+  }
+  dlg.innerHTML = `<div class="lembrete-topo">${broto(humor, { tamanho: 56 })}<small>${total > 1 ? `lembrete 1 de ${total}` : 'lembrete'}</small>
+      <button type="button" class="seta" data-lem="fechar" aria-label="Fechar">${ic('i-fechar')}</button></div>
+    <p id="lembrete-txt">${titulo}<small>${texto}</small></p>
+    <div class="linha-botoes">${botoes}</div>`;
+  dlg.onclick = e => {
+    const b = e.target.closest('[data-lem]'); if (!b) return;
+    responderLembrete(l, b.dataset.lem);
+  };
+  dlg.oncancel = e => { e.preventDefault(); dlg.close(); };
+  if (!dlg.open) dlg.showModal();
+  $('.linha-botoes .principal', dlg).focus();
+}
+
+function responderLembrete(l, resp) {
+  const dlg = $('#lembrete'), hoje = hojeIso();
+  if (resp === 'fechar') { dlg.close(); return; }
+  if (resp === 'outro') { dlg.close(); Tela.aba = 'carteira'; render(); abrirDivida(l.divida.id, l.chave); return; }
+  if (resp === 'pagar') {
+    if (l.cartao) { Dados.marcarPaga(l.cartao.id, l.chave, true); avisar('Fatura paga. Menos uma!'); }
+    else if (l.divida) {
+      Dados.pagarDivida(l.divida.id, l.chave, l.valor);
+      const p = Fatura.planoDivida(Dados.caderno.dividas.find(x => x.id === l.divida.id), hojeChave());
+      avisar(p.quitada ? 'Quitada! Uma a menos. 🌱' : 'Pago! Menos uma.');
+    }
+  } else if (resp === 'copia') {
+    acoes.exportar();
+  } else {
+    Dados.silenciar(l.id, Saude.silenciarAte(l, resp, hoje));
+  }
+  render();
+  mostrarLembretes();
+}
+
+// ------------------------------------------------------------------ tela: saúde (como estou · pra onde foi · dicas)
+function telaSaude() {
+  const seg = Tela.seg || 'como';
+  return `<div>
+    <h2 class="titulo" style="font-size:34px">Saúde</h2>
+    <div class="alternar tres" role="group" aria-label="Partes">
+      ${[['como', 'Como estou'], ['onde', 'Pra onde foi'], ['dicas', 'Dicas']].map(([v, n]) =>
+        `<button type="button" data-acao="seg" data-seg="${v}" aria-pressed="${seg === v}">${n}</button>`).join('')}
+    </div>
+    ${seg === 'onde' ? telaOnde() : seg === 'dicas' ? segDicas() : segComo()}
+  </div>`;
+}
+
+const NIVEIS = {
+  saudavel: { nome: 'Saudável', humor: 'feliz', frase: 'As contas estão respirando bem. Continua assim.' },
+  caminho: { nome: 'No caminho', humor: 'contente', frase: 'Tá indo bem. Dá pra melhorar um pouquinho.' },
+  atencao: { nome: 'Atenção', humor: 'apertado', frase: 'Algumas coisas pedem cuidado. Olha as dicas abaixo.' },
+  apertado: { nome: 'Apertado', humor: 'apertado', frase: 'O mês está pesado… mas dá pra virar, um passo de cada vez.' },
+  vazio: { nome: 'Sem dados', humor: 'dormindo', frase: 'Anota o que entra e o que sai, que eu mostro como está a saúde do mês.' },
+};
+
+function segComo() {
+  const cad = Dados.caderno, hoje = hojeIso(), t = Saude.termometro(cad, hoje), n = NIVEIS[t.nivel];
+  const pct = v => (v == null ? '—' : `${Math.round(v * 100)}%`);
+  const diag = t.nota == null ? [] : Saude.diagnostico(cad, hoje);
+  const linha = (titulo, valor, pontos, max, ref) => `<div class="indicador">
+      <span class="meio"><b>${titulo}</b><small>${ref}</small></span>
+      <span class="valor">${valor}<small class="pontos" aria-label="${pontos} de ${max} pontos">${'●'.repeat(Math.round(pontos / max * 5))}${'○'.repeat(5 - Math.round(pontos / max * 5))}</small></span>
+    </div>`;
+  // 50/30/20: régua do que entrou
+  const base = Math.max(t.renda, t.essencial + t.desejos, 1);
+  const largura = v => `${Math.max(0, v / base * 100).toFixed(1)}%`;
+  const sobra = Math.max(0, t.renda - t.essencial - t.desejos);
+  return `<div>
+    <section class="bilhete rabisco vivo" aria-label="Termômetro do mês">
+      <div class="saldo">
+        ${broto(n.humor, { tamanho: 84 })}
+        <div class="saldo-txt">
+          <div class="saldo-rot">Saúde de ${MESES[Fatura.lerChave(hoje.slice(0, 7))[1]]}</div>
+          <div class="saldo-valor">${t.nota == null ? '—' : `<span class="marcado ${t.nota >= 50 ? 'verde' : 'vermelho'}">${t.nota}</span><small class="de100"> de 100</small>`}</div>
+          <div class="nota"><b>${n.nome}.</b> ${n.frase}</div>
+        </div>
+      </div>
+      ${t.nota == null ? '' : `<div class="regua" role="img" aria-label="Nota ${t.nota} de 100">
+        <i class="z1"></i><i class="z2"></i><i class="z3"></i><i class="z4"></i>
+        <b style="left:${t.nota}%"></b></div>
+        <div class="regua-rot"><span>apertado</span><span>atenção</span><span>no caminho</span><span>saudável</span></div>`}
+    </section>
+
+    ${t.nota == null ? '' : `
+    <h3 class="titulo">O que entra na nota</h3>
+    <div class="caderno rabisco fino indicadores">
+      ${linha('Sobra do mês', pct(t.sobraPct), t.partes.sobra, 40, '20% do que entra ou mais é o ideal')}
+      ${linha('Parcelas e dívidas', pct(t.comprPct), t.partes.dividas, 25, 'até 10% é tranquilo; acima de 30% aperta')}
+      ${linha('Contas em dia', t.atrasos ? `${t.atrasos} atrasada${t.atrasos > 1 ? 's' : ''}` : 'tudo em dia', t.partes.atrasos, 15, 'pagar em dia evita multa e juros')}
+      ${linha('Reserva de emergência', t.mesesReserva == null ? R(t.reserva) : `${t.mesesReserva.toFixed(1).replace('.', ',')} meses`, t.partes.reserva, 20, `guardado: ${R(t.reserva)} · o ideal é de 3 a 6 meses`)}
+    </div>
+    <div class="linha-botoes" style="margin-top:4px"><button type="button" class="botao pequeno rabisco fino" data-acao="reserva">${ic('i-lapis')} Quanto temos guardado</button></div>
+
+    ${t.renda ? `<h3 class="titulo">50, 30, 20 <small>do que entrou</small></h3>
+    <div class="caderno rabisco fino" style="padding:14px">
+      <div class="cinquenta" role="img" aria-label="Essencial ${pct(t.essencial / t.renda)}, desejos ${pct(t.desejos / t.renda)}, sobra ${pct(sobra / t.renda)}">
+        <i class="ess" style="width:${largura(t.essencial)}"></i><i class="des" style="width:${largura(t.desejos)}"></i><i class="sob" style="width:${largura(sobra)}"></i>
+        <span class="marco" style="left:50%"></span><span class="marco" style="left:80%"></span>
+      </div>
+      <div class="legenda" style="justify-content:space-between">
+        <span><i class="leg-ess"></i>Essencial ${pct(t.essencial / t.renda)} <small>(ideal ~50%)</small></span>
+        <span><i class="leg-des"></i>Desejos ${pct(t.desejos / t.renda)} <small>(até 30%)</small></span>
+        <span><i class="leg-sob"></i>Sobra ${pct(sobra / t.renda)} <small>(20% ou mais)</small></span>
+      </div>
+    </div>` : ''}
+
+    ${diag.length ? `<h3 class="titulo">Com os seus números</h3>
+    <div class="fichas">${diag.map(d => `<div class="conselho ${d.tom} rabisco fino">
+      <b>${esc(d.titulo)}</b>${d.texto ? `<p>${esc(d.texto)}</p>` : ''}</div>`).join('')}</div>` : ''}`}
+
+    ${cartaoDica(Saude.dicaDoDia(DICAS, cad, hoje), true)}
+    <p class="aviso-legal">A nota é só uma régua para acompanhar o mês a mês, feita com o que está anotado aqui. Não é recomendação de investimento.</p>
+  </div>`;
+}
+
+function cartaoDica(d, comLink) {
+  const tema = TEMAS.find(x => x.id === d.tema);
+  return `<section class="dica-dia rabisco fino" aria-label="Dica de hoje">
+    <div class="dica-cab">${ic(tema.ic)}<span>Dica de hoje · ${tema.nome}</span></div>
+    <b>${esc(d.titulo)}</b><p>${esc(d.texto)}</p>
+    ${comLink ? `<button type="button" class="so-texto" data-acao="ver-dicas">ver todas as dicas</button>` : ''}
+  </section>`;
+}
+
+function segDicas() {
+  const tema = Tela.tema || 'todos', hoje = hojeIso();
+  const lista = DICAS.filter(d => tema === 'todos' || d.tema === tema);
+  const doDia = Saude.dicaDoDia(DICAS, Dados.caderno, hoje);
+  return `<div>
+    ${tema === 'todos' ? cartaoDica(doDia, false) : ''}
+    <div class="escolhas quebra" role="group" aria-label="Assunto" style="margin-top:14px">
+      <button type="button" class="escolha" data-acao="tema-dica" data-tema="todos" aria-pressed="${tema === 'todos'}">Todas</button>
+      ${TEMAS.map(t => `<button type="button" class="escolha" data-acao="tema-dica" data-tema="${t.id}" aria-pressed="${tema === t.id}">${ic(t.ic)}${t.nome}</button>`).join('')}
+    </div>
+    <div class="caderno rabisco fino lista-dicas">${lista.map(d => `<details class="dica-item">
+      <summary><span class="cat">${ic(TEMAS.find(x => x.id === d.tema).ic)}</span><b>${esc(d.titulo)}</b></summary>
+      <p>${esc(d.texto)}</p></details>`).join('')}</div>
+    <p class="aviso-legal">Conteúdo para aprender, não é recomendação de investimento. Regras e taxas mudam: antes de investir, confira no app do seu banco ou no site do Tesouro Direto.</p>
+  </div>`;
+}
+
+function formReserva() {
+  const atual = Dados.caderno.reserva || 0;
+  const f = abrirFolha(`${topoFolha('Reserva de emergência')}
+    <p>É o dinheiro guardado para imprevistos (não o da conta do dia a dia). Só serve para o termômetro calcular quantos meses de gastos ele cobre.</p>
+    <form id="form-reserva">
+      <div class="valor-caixa rabisco fino">
+        <label for="valor-reserva" class="campo-rot" style="margin:6px 0 0">Quanto vocês têm guardado hoje</label>
+        <input id="valor-reserva" class="valor-grande" inputmode="decimal" autocomplete="off" placeholder="R$ 0,00" value="${atual ? Fatura.emReais(atual) : ''}" autofocus>
+      </div>
+      <div class="linha-botoes"><button type="submit" class="botao principal rabisco">${ic('i-check')} Guardar</button></div>
+    </form>`);
+  $('#form-reserva', f).addEventListener('submit', e => {
+    e.preventDefault();
+    Dados.salvarReserva(Fatura.lerReais($('#valor-reserva', f).value) || 0);
+    fecharFolha(); render(); avisar('Guardado.');
   });
 }
 
@@ -1037,6 +1247,7 @@ function entrarComo(id) {
   Tela.aba = 'mes'; Tela.mes = hojeIso().slice(0, 7);
   render();
   avisar(`Oi, ${Dados.pessoa.nome}!`);
+  setTimeout(mostrarLembretes, 900);
 }
 
 // ------------------------------------------------------------------ instalar (PWA)
@@ -1060,6 +1271,10 @@ const acoes = {
     avisar(paga ? 'Fatura paga. Menos uma!' : 'Desmarcada.');
   },
   'novo-cartao': () => formCartao(),
+  seg: d => { Tela.seg = d.seg; render(); },
+  'ver-dicas': () => { Tela.aba = 'saude'; Tela.seg = 'dicas'; Tela.tema = 'todos'; render(); scrollTo({ top: 0 }); },
+  'tema-dica': d => { Tela.tema = d.tema; render(); },
+  reserva: () => formReserva(),
   renda: d => { fecharFolha(); formRenda(d.id, Tela.aba === 'mes' ? Tela.mes : hojeChave()); },
   'nova-renda': () => formRenda(),
   divida: d => abrirDivida(d.id, d.chave),
@@ -1100,6 +1315,7 @@ const acoes = {
     a.href = URL.createObjectURL(blob); a.download = `caderninho-${hojeIso()}.json`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    Dados.copiaSalva(hojeIso());
     avisar('Cópia salva nos downloads.');
   },
   importar: () => $('#arquivo').click(),
@@ -1136,6 +1352,7 @@ document.addEventListener('change', e => {
 });
 $('#anotar').addEventListener('click', () => formLanc());
 $('#quem').addEventListener('click', () => acoes.trocar());
+$('#sino').addEventListener('click', () => mostrarLembretes());
 $('#veu').addEventListener('click', fecharFolha);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#folha').hidden && !$('#pergunta').open) fecharFolha(); });
 
@@ -1155,7 +1372,7 @@ document.addEventListener('focusin', e => { if (e.target.dataset && e.target.dat
 document.addEventListener('pointerout', e => { if (e.target.dataset && e.target.dataset.dica && e.pointerType === 'mouse') { const d = $('.dica-toque'); if (d) d.remove(); } });
 
 // ------------------------------------------------------------------ começar
-const VERSAO = '1.1.0';
+const VERSAO = '1.2.0';
 Dados.carregar();
 aplicarAparencia();
 (function iniciar() {
@@ -1164,7 +1381,7 @@ aplicarAparencia();
   try { aberto = sessionStorage.getItem('caderninho.aberto'); } catch (err) { /* */ }
   const atual = e.usuarios.find(u => u.id === e.atual);
   // abre direto quando a pessoa não tem senha, ou quando já digitou nesta sessão
-  if (atual && (!atual.pin || aberto === atual.id)) { render(); }
+  if (atual && (!atual.pin || aberto === atual.id)) { render(); setTimeout(mostrarLembretes, 700); }
   else { render(); telaEntrada(atual && atual.pin ? 'pin' : 'escolher', atual && atual.id); }
 })();
 

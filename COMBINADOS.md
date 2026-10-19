@@ -30,9 +30,18 @@ Registro das decisões do Caderninho, para nada se perder entre sessões.
 - **Pagou menos num mês:** o padrão é **terminar na mesma data**, com as próximas parcelas subindo. Quando a última parcela tem folga, ela absorve a diferença primeiro (ex.: R$ 1.475,76 a R$ 200/mês, pagando R$ 150 em outubro: continua terminando em maio, e a última vai de R$ 75,76 para R$ 125,76). Dá para trocar para "manter a parcela e terminar depois".
 - A aba **Cartões** virou **Carteira**: Renda, Cartões e Dívidas.
 
+## Lembretes e saúde financeira (19/10/2026, pedido do Rosival)
+
+- **Pop-up de lembretes ao abrir o app:** 3 dias antes de vencer (fatura e parcela de dívida), "já pagou?" quando passa do dia, e a cópia de segurança a cada 15 dias. "Ainda não" pergunta de novo no dia seguinte. Um sininho no topo mostra quantos há.
+- Notificação com o celular fechado ficou de fora: precisaria de servidor.
+- **IA:** em vez do Claude ou de outra IA (precisaria de servidor, chave paga e mandaria os dados para fora do celular), fizemos uma **biblioteca de dicas escrita à mão** e uma **análise com os números do caderno**, tudo offline. Se um dia quiser IA, dá para ligar por cima.
+- **Aba Saúde** no lugar de "Pra onde foi": *Como estou* (nota de 0 a 100, régua 50/30/20, conselhos), *Pra onde foi* e *Dicas*.
+- As dicas evitam números que mudam (taxa Selic, juros do mês) e sempre dizem que não são recomendação de investimento.
+
 ## Ideias para depois (ainda não feitas)
 
 - Os dois verem um resumo junto (o "caderno da casa"), se quiserem: precisaria de sincronizar entre os celulares.
 - Metas e caixinhas ("guardar para…").
 - Orçamento por categoria com aviso quando passar.
-- Lembrete de vencimento por notificação.
+- Notificação com o celular fechado (precisa de servidor).
+- IA para conversar sobre as contas (precisa de servidor e chave paga).

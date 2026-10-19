@@ -1,10 +1,10 @@
 'use strict';
 // Guarda o app no celular para abrir sem internet.
 // Ao mudar qualquer arquivo, suba a VERSAO para o celular buscar a nova.
-const VERSAO = 'caderninho-1.1.0';
+const VERSAO = 'caderninho-1.2.0';
 const ARQUIVOS = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
-  'js/fatura.js', 'js/bancos.js', 'js/dados.js', 'js/desenho.js', 'js/app.js',
+  'js/fatura.js', 'js/saude.js', 'js/dicas.js', 'js/bancos.js', 'js/dados.js', 'js/desenho.js', 'js/app.js',
   'fonts/caveat-700.woff2', 'fonts/alegreya-sans-latin-400-normal.woff2', 'fonts/alegreya-sans-latin-400-italic.woff2',
   'fonts/alegreya-sans-latin-700-normal.woff2', 'fonts/cinzel-latin-700-normal.woff2',
   'icones/icone-192.png', 'icones/icone-512.png',
