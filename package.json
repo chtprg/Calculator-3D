@@ -1,0 +1,12 @@
+{
+  "name": "caderninho",
+  "version": "1.0.0",
+  "private": true,
+  "description": "O caderno de contas da casa (PWA).",
+  "scripts": {
+    "test": "node --test testes/*.test.js",
+    "servir": "npx http-server -p 8123 -c-1 .",
+    "telas": "node testes/telas.js prints",
+    "icones": "node icones/gerar.js"
+  }
+}

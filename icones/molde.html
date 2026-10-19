@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Molde do ícone</title>
+<link rel="stylesheet" href="../css/app.css">
+<style>
+  body { margin: 0; background: transparent; }
+  #icone { width: 512px; height: 512px; position: relative; overflow: hidden;
+    background:
+      linear-gradient(90deg, transparent 92px, rgba(206,74,74,.45) 92px 97px, transparent 97px),
+      repeating-linear-gradient(transparent 0 62px, rgba(78,118,178,.28) 62px 65px), #f6efdf; }
+  #icone.redondo { border-radius: 112px; }
+  #icone .broto { position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%); }
+  #icone.seguro .broto { width: 300px; height: 300px; }
+</style></head>
+<body><svg class="defs"><filter id="tremor0" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="2"/><feDisplacementMap in="SourceGraphic" scale="3"/></filter></svg>
+<div id="icone"></div>
+<script src="../js/bancos.js"></script><script src="../js/desenho.js"></script>
+<script>
+  // ?tipo=maskable deixa o Broto menor (área segura do Android)
+  const q = new URLSearchParams(location.search), el = document.getElementById('icone');
+  if (q.get('tipo') === 'maskable') el.classList.add('seguro'); else el.classList.add('redondo');
+  el.innerHTML = broto('feliz', { tamanho: 400 });
+  document.documentElement.style.setProperty('--tinta', '#2a2233');
+</script></body></html>

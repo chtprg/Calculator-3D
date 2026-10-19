@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Caderninho</title>
+<meta name="description" content="O caderninho de contas da casa: gastos, entradas e faturas dos cartões.">
+<meta name="theme-color" content="#f6efdf" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c1d33" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Caderninho">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icones/icone-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icones/icone-180.png">
+<link rel="preload" href="fonts/caveat-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/alegreya-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- O traço feito à mão: três "tremores" de tinta que se revezam, como desenho quadro a quadro -->
+<svg class="defs" aria-hidden="true" focusable="false">
+  <filter id="tremor0" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="2"/><feDisplacementMap in="SourceGraphic" scale="3"/></filter>
+  <filter id="tremor1" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="9"/><feDisplacementMap in="SourceGraphic" scale="3"/></filter>
+  <filter id="tremor2" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="17"/><feDisplacementMap in="SourceGraphic" scale="3"/></filter>
+
+  <!-- rabiscos: ícones desenhados com traço de caneta -->
+  <symbol id="i-mes" viewBox="0 0 24 24"><path d="M4.5 6.5h15v13h-15Z M4.5 10.5h15 M8.5 4v4 M15.5 4v4 M8 14h2 M11.5 14h2 M15 14h1.5 M8 17h2 M11.5 17h2"/></symbol>
+  <symbol id="i-cartao" viewBox="0 0 24 24"><path d="M3.5 6.5h17v11.5h-17Z M3.5 10h17 M6.5 14.5h4"/></symbol>
+  <symbol id="i-mais" viewBox="0 0 24 24"><path d="M12 5v14 M5 12h14"/></symbol>
+  <symbol id="i-onde" viewBox="0 0 24 24"><path d="M4 19.5h16 M6.5 19V12 M10.5 19V7 M14.5 19v-9 M18.5 19v-4"/></symbol>
+  <symbol id="i-ajustes" viewBox="0 0 24 24"><path d="M4 7h8.5 M17.5 7H20 M4 17h2.5 M11.5 17H20"/><circle cx="15" cy="7" r="2.3"/><circle cx="9" cy="17" r="2.3"/></symbol>
+  <symbol id="i-esq" viewBox="0 0 24 24"><path d="M14.5 5.5 8 12l6.5 6.5"/></symbol>
+  <symbol id="i-dir" viewBox="0 0 24 24"><path d="M9.5 5.5 16 12l-6.5 6.5"/></symbol>
+  <symbol id="i-fechar" viewBox="0 0 24 24"><path d="M6 6l12 12 M18 6 6 18"/></symbol>
+  <symbol id="i-lixo" viewBox="0 0 24 24"><path d="M5 7h14 M9.5 7V4.5h5V7 M6.5 7l1 12.5h9l1-12.5 M10.5 10.5v6 M13.5 10.5v6"/></symbol>
+  <symbol id="i-lapis" viewBox="0 0 24 24"><path d="M5 19l1-4L16 5l3 3L9 18Z M14 7l3 3"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+  <symbol id="i-pix" viewBox="0 0 24 24"><path d="M12 3.5 20.5 12 12 20.5 3.5 12Z M8.5 9.5l3.5 3.5 3.5-3.5 M8.5 14.5l3.5-3.5 3.5 3.5"/></symbol>
+  <symbol id="i-debito" viewBox="0 0 24 24"><path d="M3.5 6.5h17v11.5h-17Z M6.5 10.5h3v2.5h-3Z M13 15h4.5"/></symbol>
+  <symbol id="i-dinheiro" viewBox="0 0 24 24"><path d="M3 7h18v10H3Z M6 10v4 M18 10v4"/><circle cx="12" cy="12" r="2.4"/></symbol>
+  <symbol id="i-repete" viewBox="0 0 24 24"><path d="M5 11a7 7 0 0 1 12-4.5L19 8.5 M19 4.5v4h-4 M19 13a7 7 0 0 1-12 4.5L5 15.5 M5 19.5v-4h4"/></symbol>
+  <symbol id="i-cadeado" viewBox="0 0 24 24"><path d="M6 11h12v9H6Z M8.5 11V8a3.5 3.5 0 0 1 7 0v3 M12 14.5v2.5"/></symbol>
+  <symbol id="i-baixar" viewBox="0 0 24 24"><path d="M12 4v11 M7 10.5l5 5 5-5 M5 19.5h14"/></symbol>
+  <symbol id="i-subir" viewBox="0 0 24 24"><path d="M12 15.5v-11 M7 9l5-5 5 5 M5 19.5h14"/></symbol>
+  <symbol id="i-pessoas" viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3"/><circle cx="16.5" cy="9.5" r="2.5"/><path d="M3.5 19c.5-3.5 2.7-5.5 5.5-5.5s5 2 5.5 5.5 M14.5 14c2.8-.6 5.4.9 6 4.5"/></symbol>
+
+  <!-- categorias -->
+  <symbol id="c-mercado" viewBox="0 0 24 24"><path d="M5 8.5h14l-1.3 10.8a1.5 1.5 0 0 1-1.5 1.2H7.8a1.5 1.5 0 0 1-1.5-1.2Z M9 8.5V7a3 3 0 0 1 6 0v1.5"/></symbol>
+  <symbol id="c-comida" viewBox="0 0 24 24"><circle cx="14" cy="12.5" r="6.2"/><circle cx="14" cy="12.5" r="3"/><path d="M3.5 4v5c0 1 .7 1.7 1.5 1.7S6.5 10 6.5 9V4 M5 10.7V20"/></symbol>
+  <symbol id="c-casa" viewBox="0 0 24 24"><path d="M3.5 11.5 12 4.5l8.5 7 M6 9.5V20h12V9.5 M10 20v-5h4v5"/></symbol>
+  <symbol id="c-contas" viewBox="0 0 24 24"><path d="M13.5 3 6 13.5h5.5L10 21l8-11h-5.5Z"/></symbol>
+  <symbol id="c-transporte" viewBox="0 0 24 24"><path d="M3.5 15.5V12l2.2-5h12.6l2.2 5v3.5Z M3.5 12h17 M9.8 15.5h4.4"/><circle cx="7.3" cy="16.3" r="1.9"/><circle cx="16.7" cy="16.3" r="1.9"/></symbol>
+  <symbol id="c-saude" viewBox="0 0 24 24"><path d="M12 20s-7.5-4.4-7.5-10a4.2 4.2 0 0 1 7.5-2.6A4.2 4.2 0 0 1 19.5 10c0 5.6-7.5 10-7.5 10Z M12 10.5v5 M9.5 13h5"/></symbol>
+  <symbol id="c-lazer" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8Z"/></symbol>
+  <symbol id="c-roupas" viewBox="0 0 24 24"><path d="M8 4 3.8 6.5l1.8 3.6L8 9v11h8V9l2.4 1.1 1.8-3.6L16 4c-.6 1.6-2.2 2.5-4 2.5S8.6 5.6 8 4Z"/></symbol>
+  <symbol id="c-educacao" viewBox="0 0 24 24"><path d="M3.5 5.5c3-1 5.8-.8 8.5 1 2.7-1.8 5.5-2 8.5-1V19c-3-1-5.8-.8-8.5 1-2.7-1.8-5.5-2-8.5-1Z M12 6.5V20"/></symbol>
+  <symbol id="c-pets" viewBox="0 0 24 24"><path d="M12 20c-3 0-5-1.4-5-3.4S9.5 12 12 12s5 2.6 5 4.6-2 3.4-5 3.4Z"/><circle cx="5.8" cy="10.8" r="1.7"/><circle cx="9.4" cy="6.8" r="1.8"/><circle cx="14.6" cy="6.8" r="1.8"/><circle cx="18.2" cy="10.8" r="1.7"/></symbol>
+  <symbol id="c-presentes" viewBox="0 0 24 24"><path d="M4 9.5h16v3.5H4Z M5.5 13v7h13v-7 M12 9.5V20 M12 9.5c-1.2-3-5.5-4-5.5-1.4 0 1.4 5.5 1.4 5.5 1.4Zm0 0c1.2-3 5.5-4 5.5-1.4 0 1.4-5.5 1.4-5.5 1.4Z"/></symbol>
+  <symbol id="c-assinaturas" viewBox="0 0 24 24"><path d="M3.5 5.5h17v11h-17Z M10 8.5l4.5 2.5-4.5 2.5Z M8 20h8"/></symbol>
+  <symbol id="c-beleza" viewBox="0 0 24 24"><path d="M9 21v-8h6v8Z M10 13l1-6.5 3-2.5v9 M8 16.5h8"/></symbol>
+  <symbol id="c-outros" viewBox="0 0 24 24"><path d="M4 8l8-4 8 4v8l-8 4-8-4Z M4 8l8 4 8-4 M12 12v8"/></symbol>
+  <symbol id="c-salario" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.3"/><path d="M14.6 9.3c-.5-1-1.5-1.6-2.6-1.6-1.5 0-2.7.8-2.7 2s1.2 1.7 2.7 2 2.7.8 2.7 2-1.2 2-2.7 2c-1.2 0-2.2-.6-2.7-1.6 M12 6v1.6 M12 16.4V18"/></symbol>
+  <symbol id="c-extra" viewBox="0 0 24 24"><path d="M12 20.5v-8.5 M12 12c0-4 3-6.8 7.2-6.8 0 4.2-3 6.8-7.2 6.8Z M12 14.5c0-3-2.6-5.2-6.4-5.2 0 3.1 2.6 5.2 6.4 5.2Z"/></symbol>
+  <symbol id="c-recebido" viewBox="0 0 24 24"><path d="M12 4v11 M7 10.5l5 5 5-5 M5 19.5h14"/></symbol>
+</svg>
+
+<!-- textura de papel, por cima de tudo (gerada em código) -->
+<div id="papel" aria-hidden="true"></div>
+
+<div id="app">
+  <header class="topo">
+    <h1 class="marca"><span>Caderninho</span></h1>
+    <button class="quem" id="quem" type="button" aria-label="Trocar de pessoa"></button>
+  </header>
+  <main id="tela" tabindex="-1"></main>
+  <nav class="abas" aria-label="Seções">
+    <button type="button" data-aba="mes" aria-label="O mês"><svg class="ic"><use href="#i-mes"/></svg><span>Mês</span></button>
+    <button type="button" data-aba="cartoes" aria-label="Cartões"><svg class="ic"><use href="#i-cartao"/></svg><span>Cartões</span></button>
+    <button type="button" class="anotar" id="anotar" aria-label="Anotar um gasto ou entrada"><svg class="ic"><use href="#i-mais"/></svg></button>
+    <button type="button" data-aba="onde" aria-label="Pra onde foi o dinheiro"><svg class="ic"><use href="#i-onde"/></svg><span>Pra onde foi</span></button>
+    <button type="button" data-aba="ajustes" aria-label="Ajustes"><svg class="ic"><use href="#i-ajustes"/></svg><span>Ajustes</span></button>
+  </nav>
+</div>
+
+<!-- folha que sobe de baixo (anotar, cartão, fatura) -->
+<div class="veu" id="veu" hidden></div>
+<section class="folha" id="folha" role="dialog" aria-modal="true" aria-labelledby="folha-titulo" hidden></section>
+
+<!-- tela de entrada: quem está anotando -->
+<section class="entrada" id="entrada" hidden></section>
+
+<!-- bilhete de confirmação (apagar, trocar…) -->
+<dialog class="pergunta rabisco" id="pergunta" aria-labelledby="pergunta-txt">
+  <p id="pergunta-txt"></p>
+  <div class="linha-botoes">
+    <button type="button" class="botao rabisco fino" value="nao" id="pergunta-nao">Deixa quieto</button>
+    <button type="button" class="botao rabisco fino perigo" value="sim" id="pergunta-sim">Sim</button>
+  </div>
+</dialog>
+
+<div class="aviso" id="aviso" role="status" aria-live="polite"></div>
+
+<script src="js/fatura.js"></script>
+<script src="js/bancos.js"></script>
+<script src="js/dados.js"></script>
+<script src="js/desenho.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
